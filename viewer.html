@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Course Street View</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root { --bg:#f5f6f7; --fg:#1d2329; --muted:#5b6670; --line:#d5d9dd; --accent:#d9381e; --done:#1e6fd9; }
+  * { box-sizing: border-box; }
+  html, body { height:100%; margin:0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         background:var(--bg); color:var(--fg); display:flex; flex-direction:column; }
+  #error { display:none; margin:24px; padding:16px; background:#fff3f0; border:1px solid #e6a79a; border-radius:6px; }
+  #app { flex:1; display:flex; flex-direction:column; min-height:0; }
+  #bar { display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center; padding:8px 12px; background:#fff; border-bottom:1px solid var(--line); }
+  #bar button, #bar select { font:inherit; padding:5px 10px; border:1px solid var(--line); background:#fff; border-radius:5px; cursor:pointer; }
+  #bar button:hover { background:#eef0f2; }
+  #bar .group { display:flex; gap:6px; align-items:center; }
+  #slider { flex:1 1 220px; min-width:140px; }
+  #status { padding:6px 12px; font-size:14px; color:var(--muted); background:#fff; border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:4px 16px; align-items:center; }
+  #status strong { color:var(--fg); }
+  #status a { color:var(--accent); margin-left:auto; }
+  #panes { flex:1; display:flex; min-height:0; }
+  #svPane { flex:3; display:flex; flex-direction:column; min-width:0; min-height:0; }
+  #svWrap { flex:1; position:relative; display:flex; min-height:0; }
+  #svWrap iframe { flex:1; width:100%; border:0; background:#222; min-height:0; }
+  #note { margin:0; padding:5px 12px; font-size:12.5px; color:var(--muted); background:#fff; border-top:1px solid var(--line); }
+  #mapPane { flex:2; min-width:0; min-height:0; border-left:1px solid var(--line); position:relative; }
+  #map { position:absolute; inset:0; }
+  .stop-label { background:#fff; border:1px solid #888; border-radius:3px; padding:1px 4px; font-size:11px; white-space:nowrap; box-shadow:none; }
+  .stop-label:before { display:none; }
+  .cur-wrap { background:none; border:0; }
+  #turn-banner { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:5; pointer-events:none;
+    display:none; align-items:center; gap:12px; padding:8px 16px; border-radius:10px; max-width:calc(100% - 340px); min-width:200px;
+    background:rgba(20,24,28,.78); color:#fff; box-shadow:0 2px 10px rgba(0,0,0,.4); }
+  #turn-banner[data-state="ahead"], #turn-banner[data-state="now"] { display:flex; }
+  #turn-banner[data-state="now"] { background:#ffb300; color:#1d2329; }
+  #turn-banner .tb-arrow { font-size:44px; line-height:1; min-width:44px; text-align:center; }
+  #turn-banner .tb-main { font-size:20px; font-weight:700; line-height:1.2; }
+  #turn-banner .tb-text { font-size:18px; line-height:1.25; }
+  #turn-banner .tb-then { font-size:13px; opacity:.85; margin-top:3px; }
+  .turn-wrap { background:none; border:0; }
+  .turn-dot { width:16px; height:16px; border-radius:50%; background:#fff; border:1.5px solid #444; color:#222;
+    font-size:11px; line-height:13px; text-align:center; font-weight:700; }
+  .turn-dot.next { background:#ffb300; border-color:#b36b00; box-shadow:0 0 0 3px rgba(255,179,0,.5); }
+  @media (max-width:800px) {
+    #panes { flex-direction:column; }
+    #svPane { flex:3; }
+    #turn-banner { top:64px; max-width:calc(100% - 24px); }
+    #mapPane { flex:2; border-left:0; border-top:1px solid var(--line); }
+    #status a { margin-left:0; }
+  }
+</style>
+</head>
+<body>
+<div id="error"></div>
+<div id="app">
+  <div id="bar">
+    <div class="group">
+      <button id="prev" title="Previous (Left arrow)">&#9664; Previous</button>
+      <button id="play" title="Play/Pause (Space)">Play</button>
+      <button id="next" title="Next (Right arrow)">Next &#9654;</button>
+    </div>
+    <div class="group" id="turnBtns" style="display:none">
+      <button id="prevTurn" title="Previous turn (Down arrow)">&#9664; Prev turn</button>
+      <button id="nextTurn" title="Next turn (Up arrow)">Next turn &#9654;</button>
+    </div>
+    <input id="slider" type="range" min="0" max="0" value="0" step="1" aria-label="Position along course">
+    <div class="group">
+      <label for="speed">Speed</label>
+      <select id="speed">
+        <option value="1500">1.5 s / step</option>
+        <option value="2500" selected>2.5 s / step</option>
+        <option value="4000">4 s / step</option>
+      </select>
+    </div>
+    <div class="group" id="jumps"></div>
+  </div>
+  <div id="status">
+    <strong id="sSection"></strong>
+    <span id="sKm"></span>
+    <span id="sIdx"></span>
+    <span id="sTurn"></span>
+    <a id="gmaps" target="_blank" rel="noopener" href="#">Open this spot in Google Maps</a>
+  </div>
+  <div id="panes">
+    <div id="svPane">
+      <div id="svWrap">
+        <iframe id="sv" title="Google Street View" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+        <div id="turn-banner" data-state="none" aria-live="polite"></div>
+      </div>
+      <p id="note">A blank or black view means Google has no Street View imagery at this spot. Press Next to move on.</p>
+    </div>
+    <div id="mapPane"><div id="map"></div></div>
+  </div>
+</div>
+
+<script src="course-data.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  'use strict';
+  var STEP_M = 40, AHEAD_M = 8, STORE_KEY = 'streetview.index';
+
+  function showError(msg) {
+    var e = document.getElementById('error');
+    e.style.display = 'block';
+    e.textContent = msg;
+    document.getElementById('app').style.display = 'none';
+  }
+  var C = window.COURSE;
+  if (!C || !C.lap || !C.lap.length) {
+    showError('Could not load the course. Expected course-data.js (setting window.COURSE) to sit next to this file.');
+    return;
+  }
+
+  // ---- geometry ----
+  var R = 6371000, rad = Math.PI / 180;
+  function hav(a, b) {
+    var dLat = (b[0] - a[0]) * rad, dLon = (b[1] - a[1]) * rad;
+    var s = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+  }
+  function bearing(a, b) {
+    var p1 = a[0] * rad, p2 = b[0] * rad, dl = (b[1] - a[1]) * rad;
+    var y = Math.sin(dl) * Math.cos(p2);
+    var x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+    return ((Math.atan2(y, x) / rad) + 360) % 360;
+  }
+
+  // ---- full course ----
+  var lapCount = C.lapCount || 1, course = [], pieceEnds = [], pieceNames = [];
+  function addPiece(arr, name) {
+    for (var i = (course.length ? 1 : 0); i < arr.length; i++) course.push(arr[i]);
+    pieceEnds.push(course.length - 1);
+    pieceNames.push(name);
+  }
+  for (var l = 0; l < lapCount; l++) addPiece(C.lap, 'Lap ' + (l + 1) + ' of ' + lapCount);
+  if (C.lake && C.lake.length) addPiece(C.lake, 'Lake loop');
+
+  var cum = [0];
+  for (var i = 1; i < course.length; i++) cum.push(cum[i - 1] + hav(course[i - 1], course[i]));
+  var total = cum[cum.length - 1];
+  var pieceEndDist = pieceEnds.map(function (k) { return cum[k]; });
+
+  function sectionAt(d) {
+    for (var p = 0; p < pieceEndDist.length; p++) if (d <= pieceEndDist[p] + 0.5) return pieceNames[p];
+    return pieceNames[pieceNames.length - 1];
+  }
+  var seg = 0;
+  function posAt(d) { // linear scan helper with a binary search
+    var lo = 0, hi = cum.length - 1;
+    if (d >= total) return course[course.length - 1];
+    while (hi - lo > 1) { var mid = (lo + hi) >> 1; if (cum[mid] <= d) lo = mid; else hi = mid; }
+    var span = cum[hi] - cum[lo], t = span > 0 ? (d - cum[lo]) / span : 0;
+    return [course[lo][0] + (course[hi][0] - course[lo][0]) * t,
+            course[lo][1] + (course[hi][1] - course[lo][1]) * t];
+  }
+
+  // ---- view points ----
+  var dists = [];
+  for (var d = 0; d < total; d += STEP_M) dists.push(d);
+  dists.push(total);
+  var points = dists.map(function (d) {
+    var p = posAt(d);
+    return { lat: p[0], lon: p[1], km: d / 1000, heading: 0, section: sectionAt(d), _d: d };
+  });
+  for (var k = 0; k < points.length; k++) {
+    if (k === points.length - 1 && k > 0) { points[k].heading = points[k - 1].heading; continue; }
+    var a = [points[k].lat, points[k].lon];
+    var ahead = posAt(Math.min(total, points[k]._d + AHEAD_M));
+    var h = hav(a, ahead) > 0.5 ? bearing(a, ahead) : (k > 0 ? points[k - 1].heading : 0);
+    points[k].heading = h;
+  }
+
+  // ---- DOM ----
+  var $ = function (id) { return document.getElementById(id); };
+  var slider = $('slider'), sv = $('sv'), playBtn = $('play');
+  slider.max = points.length - 1;
+
+  var index = 0;
+  try {
+    var saved = parseInt(localStorage.getItem(STORE_KEY), 10);
+    if (isFinite(saved) && saved >= 0 && saved < points.length) index = saved;
+  } catch (e) {}
+
+  // ---- map ----
+  var map = L.map('map', { zoomControl: true });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd',
+    maxZoom: 20,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  }).addTo(map);
+  var allLL = course.map(function (p) { return [p[0], p[1]]; });
+  var full = L.polyline(allLL, { color: '#d9381e', weight: 4, opacity: 0.75 }).addTo(map);
+  var ridden = L.polyline([], { color: '#1e6fd9', weight: 5, opacity: 0.95 }).addTo(map);
+  map.fitBounds(full.getBounds(), { padding: [20, 20] });
+  (C.stops || []).forEach(function (s) {
+    L.circleMarker([s[1], s[2]], { radius: 5, color: '#222', weight: 1.5, fillColor: '#ffd23f', fillOpacity: 1 })
+      .bindTooltip(String(s[0]), { permanent: true, direction: 'right', offset: [6, 0], className: 'stop-label' })
+      .addTo(map);
+  });
+  function curIcon(h) {
+    var svg = '<svg width="44" height="44" viewBox="-22 -22 44 44" style="transform:rotate(' + h + 'deg);overflow:visible">' +
+      '<path d="M0,-20 L9,-4 L-9,-4 Z" fill="#1e6fd9" fill-opacity="0.55" stroke="#1e6fd9" stroke-width="1"/>' +
+      '<circle r="6" fill="#fff" stroke="#1e6fd9" stroke-width="3"/></svg>';
+    return L.divIcon({ html: svg, className: 'cur-wrap', iconSize: [44, 44], iconAnchor: [22, 22] });
+  }
+  var curMarker = L.marker([points[0].lat, points[0].lon], { icon: curIcon(0), zIndexOffset: 1000, interactive: false }).addTo(map);
+
+  map.on('click', function (ev) {
+    var best = -1, bestD = Infinity, ds = new Array(points.length);
+    for (var i = 0; i < points.length; i++) {
+      var dd = hav([ev.latlng.lat, ev.latlng.lng], [points[i].lat, points[i].lon]);
+      ds[i] = dd;
+      if (dd < bestD) { bestD = dd; best = i; }
+    }
+    var pick = best, pd = Infinity, tol = bestD + 25;
+    for (var j = index; j < points.length; j++) if (ds[j] <= tol && ds[j] < pd) { pd = ds[j]; pick = j; }
+    setIndex(pick);
+  });
+
+  // ---- turns ----
+  var turns = (C.turns && C.turns.length) ? C.turns.slice().sort(function (a, b) { return a.d - b.d; }) : [];
+  var GLYPH = { left: '\u2190', right: '\u2192', 'slight-left': '\u2196', 'slight-right': '\u2197',
+    'sharp-left': '\u2199', 'sharp-right': '\u2198', uturn: '\u21A9', roundabout: '\u27F3',
+    'roundabout-left': '\u21B0', 'roundabout-right': '\u21B1', start: '\u25B6', finish: '\u2691' };
+  function glyph(t) { return GLYPH[t] || '\u2191'; }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function turnIdxFor(dist) { // first turn with d >= dist - 15, or turns.length
+    for (var i = 0; i < turns.length; i++) if (turns[i].d >= dist - 15) return i;
+    return turns.length;
+  }
+  function viewIdxBefore(d) { // nearest view point with distance <= d - 40, min 0
+    var best = 0, lim = d - 40;
+    for (var i = 0; i < points.length; i++) { if (points[i]._d <= lim) best = i; else break; }
+    return best;
+  }
+  function nextTurn() {
+    if (!turns.length) return null;
+    var dist = points[index]._d, i = turnIdxFor(dist);
+    if (i >= turns.length) return null;
+    return { index: i, turn: turns[i], distance: turns[i].d - dist };
+  }
+  function fmtAhead(m) {
+    if (m >= 1000) return 'In ' + (m / 1000).toFixed(1) + ' km';
+    return 'In ' + (Math.round(m / 10) * 10) + ' m';
+  }
+  var turnMarkers = [], litMarker = -1;
+  turns.forEach(function (t, i) {
+    var mk = L.marker([t.lat, t.lon], {
+      icon: L.divIcon({ html: '<div class="turn-dot">' + glyph(t.type) + '</div>', className: 'turn-wrap', iconSize: [16, 16], iconAnchor: [8, 8] }),
+      zIndexOffset: 200
+    }).bindTooltip(esc(t.text) + ' \u2013 km ' + (t.d / 1000).toFixed(2)).addTo(map);
+    mk.on('click', function (ev) { if (ev.originalEvent) L.DomEvent.stopPropagation(ev); setIndex(viewIdxBefore(t.d)); });
+    turnMarkers.push(mk);
+  });
+  function setLit(i) {
+    if (i === litMarker) return;
+    if (litMarker >= 0 && turnMarkers[litMarker]) {
+      var o = turnMarkers[litMarker].getElement(); if (o) o.firstChild.classList.remove('next');
+      turnMarkers[litMarker].setZIndexOffset(200);
+    }
+    litMarker = i;
+    if (i >= 0 && turnMarkers[i]) {
+      var n = turnMarkers[i].getElement(); if (n) n.firstChild.classList.add('next');
+      turnMarkers[i].setZIndexOffset(900);
+    }
+  }
+  function renderTurns() {
+    var banner = $('turn-banner');
+    if (!turns.length) { banner.setAttribute('data-state', 'none'); return; }
+    var nt = nextTurn();
+    $('sTurn').textContent = 'turn ' + (nt ? nt.index + 1 : turns.length) + ' / ' + turns.length;
+    setLit(nt ? nt.index : -1);
+    if (!nt) { banner.setAttribute('data-state', 'none'); banner.innerHTML = ''; return; }
+    var t = nt.turn, state = nt.distance <= 30 ? 'now' : 'ahead';
+    var then = '', after = turns[nt.index + 1];
+    if (after && after.d - t.d <= 150) {
+      then = '<div class="tb-then">Then: ' + esc(after.text) + ' in ' + Math.round((after.d - t.d) / 10) * 10 + ' m</div>';
+    }
+    banner.innerHTML = '<div class="tb-arrow">' + glyph(t.type) + '</div><div>' +
+      '<div class="tb-main">' + (state === 'now' ? 'NOW' : fmtAhead(nt.distance)) + '</div>' +
+      '<div class="tb-text">' + esc(t.text) + '</div>' + then + '</div>';
+    banner.setAttribute('data-state', state);
+  }
+  function jumpNextTurn() {
+    var dist = points[index]._d;
+    for (var i = 0; i < turns.length; i++) { var vi = viewIdxBefore(turns[i].d); if (vi > index) { setIndex(vi); return; } }
+  }
+  function jumpPrevTurn() {
+    var dist = points[index]._d;
+    for (var i = turns.length - 1; i >= 0; i--) { var vi = viewIdxBefore(turns[i].d); if (vi < index) { setIndex(vi); return; } }
+  }
+  if (turns.length) $('turnBtns').style.display = '';
+  $('nextTurn').addEventListener('click', jumpNextTurn);
+  $('prevTurn').addEventListener('click', jumpPrevTurn);
+
+  // ---- state / rendering ----
+  var timer = null, svTimer = null;
+  function loadSV() {
+    var p = points[index];
+    sv.src = 'https://www.google.com/maps/embed?origin=mfe&pb=!6m7!1m6!2m2!1d' + p.lat.toFixed(6) +
+      '!2d' + p.lon.toFixed(6) + '!3f' + Math.round(p.heading) + '!4f-0!5f1';
+  }
+  function render() {
+    var p = points[index];
+    slider.value = index;
+    $('sSection').textContent = p.section;
+    $('sKm').textContent = 'km ' + p.km.toFixed(2) + ' of ' + points[points.length - 1].km.toFixed(2);
+    $('sIdx').textContent = (index + 1) + ' / ' + points.length;
+    $('gmaps').href = 'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' +
+      p.lat.toFixed(6) + ',' + p.lon.toFixed(6) + '&heading=' + Math.round(p.heading);
+    renderTurns();
+    curMarker.setLatLng([p.lat, p.lon]);
+    curMarker.setIcon(curIcon(Math.round(p.heading)));
+    var done = [];
+    for (var i = 0; i <= index; i++) done.push([points[i].lat, points[i].lon]);
+    ridden.setLatLngs(done);
+    if (!map.getBounds().pad(-0.05).contains([p.lat, p.lon])) map.panTo([p.lat, p.lon]);
+    try { localStorage.setItem(STORE_KEY, String(index)); } catch (e) {}
+    clearTimeout(svTimer);
+    svTimer = setTimeout(loadSV, 250);
+  }
+  function setIndex(i) {
+    i = Math.max(0, Math.min(points.length - 1, Math.round(Number(i)) || 0));
+    index = i;
+    render();
+  }
+
+  // ---- play ----
+  function stepMs() { return parseInt($('speed').value, 10) || 2500; }
+  function stop() { clearInterval(timer); timer = null; playBtn.textContent = 'Play'; }
+  function start() {
+    if (index >= points.length - 1) setIndex(0);
+    playBtn.textContent = 'Pause';
+    clearInterval(timer);
+    timer = setInterval(function () {
+      if (index >= points.length - 1) { stop(); return; }
+      setIndex(index + 1);
+      if (index >= points.length - 1) stop();
+    }, stepMs());
+  }
+  function toggle() { if (timer) stop(); else start(); }
+
+  $('prev').addEventListener('click', function () { setIndex(index - 1); });
+  $('next').addEventListener('click', function () { setIndex(index + 1); });
+  playBtn.addEventListener('click', toggle);
+  $('speed').addEventListener('change', function () { if (timer) start(); });
+  slider.addEventListener('input', function () { setIndex(slider.value); });
+
+  var jumps = $('jumps'), seen = {};
+  points.forEach(function (p, i) {
+    if (seen[p.section] !== undefined) return;
+    seen[p.section] = i;
+    var label = p.section === 'Lake loop' ? 'Lake loop' : p.section.replace(/ of \d+$/, '');
+    var b = document.createElement('button');
+    b.textContent = label;
+    b.title = 'Jump to ' + p.section;
+    b.addEventListener('click', function () { setIndex(i); });
+    jumps.appendChild(b);
+  });
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    var t = ev.target, tag = t && t.tagName;
+    if (ev.key === 'ArrowLeft') { ev.preventDefault(); setIndex(index - 1); }
+    else if (ev.key === 'ArrowRight') { ev.preventDefault(); setIndex(index + 1); }
+    else if (ev.key === 'ArrowUp') { ev.preventDefault(); jumpNextTurn(); }
+    else if (ev.key === 'ArrowDown') { ev.preventDefault(); jumpPrevTurn(); }
+    else if (ev.key === ' ' || ev.code === 'Space') {
+      if (tag === 'BUTTON' || tag === 'SELECT' || tag === 'A') return; // let focused controls act on Space
+      ev.preventDefault(); toggle();
+    }
+  });
+  window.addEventListener('resize', function () { map.invalidateSize(); });
+
+  window.__viewer = { points: points, getIndex: function () { return index; }, setIndex: setIndex, turns: turns, nextTurn: nextTurn };
+
+  render();
+  clearTimeout(svTimer);
+  loadSV(); // first load without the debounce delay
+})();
+</script>
+</body>
+</html>

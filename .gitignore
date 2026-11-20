@@ -1,0 +1,4 @@
+.DS_Store
+.vercel
+.gstack/
+__pycache__/
