@@ -7,6 +7,7 @@
 <title>Bike courses</title>
 <meta name="description" content="Gravel bike routes around Cisauk and BSD. Preview every turn in Street View, then download the GPX for your Garmin.">
 <meta name="theme-color" content="#d9381e">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -28,14 +29,36 @@
          background:var(--bg); color:var(--fg); }
   main { max-width:760px; margin:0 auto; padding:20px 16px 40px; }
   h1 { font-size:24px; margin:0 0 16px; }
-  .card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px; margin-bottom:14px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:8px; margin-bottom:14px; overflow:hidden; }
+  .thumb { display:block; position:relative; height:240px; background:#e8ebee; }
+  .thumb .tmap { position:absolute; inset:0; pointer-events:none; }
+  .body { padding:16px; min-width:0; }
   .card h2 { font-size:18px; margin:0 0 6px; }
-  .card p { margin:0 0 10px; color:var(--muted); line-height:1.4; }
-  .km { font-weight:600; color:var(--fg); margin-bottom:12px; }
+  .card p { margin:0 0 12px; color:var(--muted); line-height:1.4; }
+  .stats { display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin:0 0 12px; }
+  .stat .v { font-size:18px; font-weight:700; line-height:1.2; }
+  .stat .l { font-size:12px; color:var(--muted); margin-top:2px; }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; }
+  .tag { font-size:12px; padding:3px 10px; border-radius:999px; background:#eef0f2; color:var(--fg); border:1px solid var(--line); }
+  .route { font-size:14px; margin:0 0 12px; line-height:1.4; }
+  .route b, .stops-h { font-weight:600; }
+  .stops-h { font-size:14px; margin:0 0 6px; }
+  .stops { list-style:none; margin:0 0 14px; padding:0; display:flex; flex-wrap:wrap; gap:4px 14px; font-size:13px; color:var(--muted); }
+  .stops li { display:inline-flex; align-items:center; gap:6px; }
+  .badge, .stop-dot { width:20px; height:20px; border-radius:50%; background:#ffd23f; border:1.5px solid #222; color:#1d2329;
+    font:700 12px/17px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; text-align:center; }
+  .badge { flex:none; display:inline-block; }
+  .stop-wrap { background:none; border:0; }
   .links { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
   .links a { color:var(--accent); display:inline-flex; align-items:center; min-height:44px; }
   .links a.primary { background:var(--accent); color:#fff; text-decoration:none; padding:0 16px; border-radius:5px; }
+  .thumb .leaflet-control-attribution { pointer-events:auto; font-size:9px; }
+  @media (min-width:700px) {
+    .card.has-thumb { display:grid; grid-template-columns:280px 1fr; }
+    .card.has-thumb .thumb { height:auto; min-height:220px; }
+  }
   @media (max-width:480px) {
+    .stats { grid-template-columns:repeat(2, 1fr); }
     .links a { justify-content:center; text-align:center; }
     .links a.primary { flex:1 1 100%; }
   }
@@ -48,6 +71,7 @@
   <div id="list"></div>
   <div id="empty">No courses yet. Add one with tools/make_course.py (see README.md).</div>
 </main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="courses/index.js" onerror="window.COURSES_FAILED = true"></script>
 <script>
 (function () {
@@ -65,11 +89,102 @@
     if (text !== undefined) e.textContent = text;
     return e;
   }
+  window.__courseMaps = [];
+  var useOsm = /^https?:$/.test(location.protocol);
+  function rideTime(km) {
+    var min = Math.max(5, Math.round(km / 15 * 60 / 5) * 5), h = Math.floor(min / 60), m = min % 60;
+    return '~' + (h ? h + ' h' + (m ? ' ' + m + ' min' : '') : m + ' min');
+  }
+  function stat(value, label) {
+    var d = el('div', 'stat');
+    d.appendChild(el('div', 'v', value));
+    d.appendChild(el('div', 'l', label));
+    return d;
+  }
+  function isPt(p) { return Array.isArray(p) && p.length === 2 && isFinite(p[0]) && isFinite(p[1]); }
+  function addMap(box, c) {
+    if (typeof L === 'undefined') return;
+    var map = L.map(box, { zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+      boxZoom: false, keyboard: false, touchZoom: false, tap: false });
+    if (useOsm) {
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+    } else {
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri'
+      }).addTo(map);
+    }
+    var line = L.polyline(c.preview, { color: '#1e6fd9', weight: 4, opacity: 0.95, interactive: false }).addTo(map);
+    (c.stops || []).forEach(function (s, i) {
+      if (!Array.isArray(s) || !isFinite(s[1]) || !isFinite(s[2])) return;
+      var dot = el('div', 'stop-dot', String(i + 1));
+      L.marker([s[1], s[2]], {
+        icon: L.divIcon({ html: dot.outerHTML, className: 'stop-wrap', iconSize: [20, 20], iconAnchor: [10, 10] }),
+        interactive: false, keyboard: false, zIndexOffset: 300
+      }).addTo(map);
+    });
+    var bounds = line.getBounds();
+    function fit() { map.invalidateSize(); map.fitBounds(bounds, { padding: [18, 18], animate: false }); }
+    map.fitBounds(bounds, { padding: [18, 18], animate: false });
+    requestAnimationFrame(fit);
+    window.addEventListener('load', fit);
+    window.addEventListener('resize', fit);
+    window.__courseMaps.push(map);
+  }
   courses.forEach(function (c) {
     var card = el('div', 'card');
-    card.appendChild(el('h2', '', c.name));
-    if (c.description) card.appendChild(el('p', '', c.description));
-    card.appendChild(el('div', 'km', c.km.toFixed(1) + ' km'));
+    var hasMap = Array.isArray(c.preview) && c.preview.length >= 2 && c.preview.every(isPt);
+    if (hasMap) {
+      card.className += ' has-thumb';
+      var thumb = el('a', 'thumb');
+      thumb.href = 'viewer.html?course=' + encodeURIComponent(c.slug);
+      thumb.setAttribute('aria-label', 'Ride ' + c.name + ' in Street View');
+      var box = el('div', 'tmap');
+      thumb.appendChild(box);
+      card.appendChild(thumb);
+      list.appendChild(card);
+      addMap(box, c);
+    }
+    var body = el('div', 'body');
+    body.appendChild(el('h2', '', c.name));
+    if (c.description) body.appendChild(el('p', '', c.description));
+    var stats = el('div', 'stats');
+    if (typeof c.km === 'number') {
+      stats.appendChild(stat(c.km.toFixed(1) + ' km', 'Distance'));
+    }
+    if (typeof c.ascentM === 'number') stats.appendChild(stat(c.ascentM + ' m', 'Climb'));
+    if (typeof c.km === 'number') stats.appendChild(stat(rideTime(c.km), 'Ride time at 15 km/h'));
+    if (typeof c.turns === 'number') stats.appendChild(stat(String(c.turns), 'Turns'));
+    if (stats.children.length) body.appendChild(stats);
+    var tagVals = [c.surface, c.difficulty].filter(Boolean);
+    if (tagVals.length) {
+      var tags = el('div', 'tags');
+      tagVals.forEach(function (t) { tags.appendChild(el('span', 'tag', t)); });
+      body.appendChild(tags);
+    }
+    if (Array.isArray(c.sections) && c.sections.length) {
+      var parts = c.sections.map(function (s) {
+        return (s.repeat > 1 ? s.repeat + ' \u00d7 ' : '') + s.label + ' (' + Number(s.km).toFixed(1) + ' km)';
+      });
+      var route = el('p', 'route');
+      route.appendChild(el('b', '', 'Route: '));
+      route.appendChild(document.createTextNode(parts.join(', then ')));
+      body.appendChild(route);
+    }
+    if (Array.isArray(c.stops) && c.stops.length) {
+      body.appendChild(el('div', 'stops-h', 'Stops'));
+      var ul = el('ol', 'stops');
+      c.stops.forEach(function (s, i) {
+        var li = el('li');
+        li.appendChild(el('span', 'badge', String(i + 1)));
+        li.appendChild(el('span', '', String(s[0])));
+        ul.appendChild(li);
+      });
+      body.appendChild(ul);
+    }
     var links = el('div', 'links');
     var ride = el('a', 'primary', 'Ride it in Street View');
     ride.href = 'viewer.html?course=' + encodeURIComponent(c.slug);
@@ -78,8 +193,9 @@
     dl.setAttribute('download', '');
     links.appendChild(ride);
     links.appendChild(dl);
-    card.appendChild(links);
-    list.appendChild(card);
+    body.appendChild(links);
+    card.appendChild(body);
+    if (!hasMap) list.appendChild(card);
   });
 })();
 </script>

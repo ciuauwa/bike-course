@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-11-20: Course list cards show a route map thumbnail, distance, climb, ride time, turns, surface, difficulty, route breakdown and stops.
 - 2026-11-20: Favicon and link-preview (WhatsApp) title, description and image. Regenerate the images with tools/make_share_assets.py (needs Pillow).
 - 2026-11-20: On phones the map is now the larger pane and the Street View the smaller one.
 - 2026-11-20: Stops on the map are numbered, and a Stops list in the map legend names each one.

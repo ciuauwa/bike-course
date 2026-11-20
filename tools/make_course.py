@@ -47,6 +47,11 @@ def route(waypoints, profile):
         with urllib.request.urlopen(url, timeout=60) as r:
             data = json.loads(r.read().decode("utf-8"))
         coords = data["features"][0]["geometry"]["coordinates"]
+        props = data["features"][0].get("properties", {})
+        try:
+            ascent = float(props.get("filtered ascend", 0))
+        except (TypeError, ValueError):
+            ascent = 0.0
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", "replace")[:200]
         fail("BRouter returned HTTP %s for %s: %s" % (e.code, url, body))
@@ -54,20 +59,24 @@ def route(waypoints, profile):
         fail("BRouter request failed (%s: %s) for %s" % (type(e).__name__, e, url))
     if len(coords) < 2:
         fail("BRouter returned an empty route for %s" % url)
-    return coords  # [lon, lat, ele]
+    return coords, ascent  # coords are [lon, lat, ele]; ascent is BRouter "filtered ascend" in metres
 
 
 def build_pieces(cfg):
-    """Return (pieces, full) where pieces are per-segment [lon,lat,ele] lists and
-    full is the expanded course (repeats applied, duplicate joins skipped)."""
+    """Return (pieces, full, ascent_m) where pieces are per-segment [lon,lat,ele] lists,
+    full is the expanded course (repeats applied, duplicate joins skipped) and
+    ascent_m is the total climb (BRouter "filtered ascend" x repeat, summed)."""
     pieces = []
+    ascent = 0.0
     for s in cfg["segments"]:
-        pieces.append(route(s["waypoints"], cfg["profile"]))
+        coords, a = route(s["waypoints"], cfg["profile"])
+        pieces.append(coords)
+        ascent += a * int(s.get("repeat", 1))
     full = []
     for s, pts in zip(cfg["segments"], pieces):
         for _ in range(int(s.get("repeat", 1))):
             full.extend(pts if not full else pts[1:])
-    return pieces, full
+    return pieces, full, int(round(ascent))
 
 
 # -------------------------------------------------------------------- GPX
@@ -162,6 +171,54 @@ def compute_turns(pts, RB):
 
 
 # ------------------------------------------------------------- index.js
+def simplify(pts, tol_m):
+    """Iterative Douglas-Peucker on [lat, lon] points; tolerance in metres."""
+    n = len(pts)
+    if n < 3:
+        return list(pts)
+    lat0 = math.radians(pts[0][0])
+    xy = [(math.radians(p[1]) * math.cos(lat0) * 6371000, math.radians(p[0]) * 6371000) for p in pts]
+
+    def dist(i, a, b):
+        (px, py), (ax, ay), (bx, by) = xy[i], xy[a], xy[b]
+        dx, dy = bx - ax, by - ay
+        if dx == 0 and dy == 0:
+            return math.hypot(px - ax, py - ay)
+        t = max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
+        return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+
+    keep = [False] * n
+    keep[0] = keep[-1] = True
+    stack = [(0, n - 1)]
+    while stack:
+        a, b = stack.pop()
+        best, idx = -1, -1
+        for i in range(a + 1, b):
+            d = dist(i, a, b)
+            if d > best:
+                best, idx = d, i
+        if idx >= 0 and best > tol_m:
+            keep[idx] = True
+            stack.append((a, idx))
+            stack.append((idx, b))
+    return [p for p, k in zip(pts, keep) if k]
+
+
+def make_preview(segments, tol_m=8, cap=250):
+    pts = []
+    for s in segments:
+        for p in s["points"]:
+            q = [round(p[0], 5), round(p[1], 5)]
+            if not pts or pts[-1] != q:
+                pts.append(q)
+    tol = tol_m
+    out = simplify(pts, tol)
+    while len(out) > cap:  # widen the tolerance until it fits the cap
+        tol *= 1.25
+        out = simplify(pts, tol)
+    return out
+
+
 def write_index(root):
     entries = []
     for cj in glob.glob(os.path.join(root, "courses", "*", "course.json")):
@@ -175,13 +232,27 @@ def write_index(root):
             src = f.read()
         data = json.loads(src[src.index("{"):src.rindex("}") + 1])
         slug = os.path.basename(folder)
-        entries.append({
+        entry = {
             "slug": slug,
             "name": cfg["name"],
             "description": cfg.get("description", ""),
             "km": round(data["totalM"] / 1000, 1),
             "gpx": "courses/%s/%s" % (slug, cfg["gpx"]),
-        })
+        }
+        if "ascentM" in data:  # stored in course-data.js so the index needs no re-routing
+            entry["ascentM"] = int(data["ascentM"])
+        entry["turns"] = len(data.get("turns", []))
+        entry["stops"] = cfg.get("stops", [])
+        entry["sections"] = [
+            {"label": sg["label"], "repeat": int(sg.get("repeat", 1)),
+             "km": round(sum(hav(a, b) for a, b in zip(sg["points"], sg["points"][1:])) / 1000, 1)}
+            for sg in data["segments"]
+        ]
+        entry["preview"] = make_preview(data["segments"])
+        for k in ("surface", "difficulty"):
+            if cfg.get(k):
+                entry[k] = cfg[k]
+        entries.append(entry)
     entries.sort(key=lambda e: e["name"].lower())
     with open(os.path.join(root, "courses", "index.js"), "w", encoding="utf-8") as f:
         f.write("// Generated by tools/make_course.py. Do not edit.\nwindow.COURSES = "
@@ -205,7 +276,7 @@ def main():
     if cfg["slug"] != os.path.basename(folder):
         fail("slug '%s' does not match folder '%s'" % (cfg["slug"], os.path.basename(folder)))
 
-    pieces, full = build_pieces(cfg)
+    pieces, full, ascent_m = build_pieces(cfg)
     write_gpx(os.path.join(folder, cfg["gpx"]), cfg, full)
 
     latlon = [[p[1], p[0]] for p in full]
@@ -218,6 +289,7 @@ def main():
         "description": cfg.get("description", ""),
         "gpx": cfg["gpx"],
         "totalM": round(total),
+        "ascentM": ascent_m,
         "segments": [
             {"label": s["label"], "repeat": int(s.get("repeat", 1)),
              "points": [[round(p[1], 6), round(p[0], 6)] for p in pts]}
@@ -231,7 +303,7 @@ def main():
                 "turns[].d is metres from the start along the full course.\n"
                 "window.COURSE = " + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n")
     write_index(root)
-    print("%s: %d m, %d points, %d turns" % (cfg["slug"], round(total), len(full), len(turns)))
+    print("%s: %d m, %d points, %d turns, %d m climb" % (cfg["slug"], round(total), len(full), len(turns), ascent_m))
 
 
 if __name__ == "__main__":

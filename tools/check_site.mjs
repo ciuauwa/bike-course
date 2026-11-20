@@ -60,6 +60,16 @@ for (const entry of Array.isArray(courses) ? courses : []) {
   const trkpts = (fs.readFileSync(gpxFile, 'utf8').match(/<trkpt\b/g) || []).length;
   if (trkpts !== full.length) err(`${tag} GPX has ${trkpts} trkpt, expected ${full.length}`);
   if (entry.km !== Math.round(C.totalM / 100) / 10) err(`${tag} index km ${entry.km} != totalM/1000 (${(C.totalM / 1000).toFixed(1)})`);
+  const pv = entry.preview;
+  if (!Array.isArray(pv) || pv.length < 2 || pv.length > 250 || !pv.every(isPair)) err(`${tag} preview must be 2..250 [lat, lon] pairs`);
+  if (!Array.isArray(entry.sections) || !entry.sections.length) err(`${tag} sections is empty or missing`);
+  else {
+    const sum = entry.sections.reduce((a, s) => a + s.km * s.repeat, 0);
+    if (!(Math.abs(sum - entry.km) <= Math.max(entry.km * 0.02, 0.2))) err(`${tag} sections sum ${sum.toFixed(1)} km is not within 2% of km ${entry.km}`);
+  }
+  if (entry.turns !== turns.length) err(`${tag} index turns ${entry.turns} != ${turns.length} in course-data.js`);
+  if (!Number.isInteger(entry.ascentM) || entry.ascentM < 0) err(`${tag} ascentM must be a non-negative integer`);
+  if (!Array.isArray(entry.stops)) err(`${tag} stops is not an array`);
   lines.push(`${slug}: ${C.totalM} m, ${full.length} points, ${turns.length} turns, ${entry.km} km`);
 }
 
@@ -79,7 +89,7 @@ function checkHtml(name, required, forbidden) {
 }
 const SHARE = ['og:image" content="https://bike.davidyosuanto.com/og-image.png"', 'og:title', 'og:description', 'rel="icon"', 'apple-touch-icon'];
 for (const f of ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png', 'og-image.png']) if (!fs.existsSync(path.join(root, f))) err(`missing ${f}`);
-checkHtml('index.html', SHARE, []);
+checkHtml('index.html', [...SHARE, 'leaflet@1.9.4', 'tile.openstreetmap.org', 'server.arcgisonline.com', '__courseMaps'], []);
 checkHtml('viewer.html', ['turn-banner', 'tile.openstreetmap.org', 'server.arcgisonline.com', 'maps/embed?origin=mfe', 'URLSearchParams', ...SHARE,
   'id="more"', 'id="morePanel"', 'id="legend"', 'id="stopsToggle"', 'id="stopsList"', '100dvh', 'safe-area-inset-bottom', 'viewport-fit=cover'],
   ['basemaps.cartocdn.com', 'src="course-data.js"']);
