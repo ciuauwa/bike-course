@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
 <title>Course Street View</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
@@ -12,6 +13,9 @@
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
          background:var(--bg); color:var(--fg); display:flex; flex-direction:column; }
   #error { display:none; margin:24px; padding:16px; background:#fff3f0; border:1px solid #e6a79a; border-radius:6px; }
+  #head { display:flex; flex-wrap:wrap; gap:4px 16px; align-items:baseline; padding:8px 12px; background:#fff; border-bottom:1px solid var(--line); font-size:14px; }
+  #head a { color:var(--accent); }
+  #head h1 { font-size:16px; margin:0; flex:1 1 auto; }
   #app { flex:1; display:flex; flex-direction:column; min-height:0; }
   #bar { display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center; padding:8px 12px; background:#fff; border-bottom:1px solid var(--line); }
   #bar button, #bar select { font:inherit; padding:5px 10px; border:1px solid var(--line); background:#fff; border-radius:5px; cursor:pointer; }
@@ -56,6 +60,11 @@
 <body>
 <div id="error"></div>
 <div id="app">
+  <div id="head">
+    <a href="index.html">&larr; All courses</a>
+    <h1 id="courseName"></h1>
+    <a id="dlGpx" download href="#">Download GPX</a>
+  </div>
   <div id="bar">
     <div class="group">
       <button id="prev" title="Previous (Left arrow)">&#9664; Previous</button>
@@ -96,24 +105,48 @@
   </div>
 </div>
 
-<script src="course-data.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function () {
   'use strict';
-  var STEP_M = 40, AHEAD_M = 8, STORE_KEY = 'streetview.index';
+  var STEP_M = 40, AHEAD_M = 8;
 
   function showError(msg) {
     var e = document.getElementById('error');
+    e.textContent = msg + ' ';
+    var a = document.createElement('a');
+    a.href = 'index.html';
+    a.textContent = 'Back to all courses';
+    e.appendChild(a);
     e.style.display = 'block';
-    e.textContent = msg;
     document.getElementById('app').style.display = 'none';
   }
-  var C = window.COURSE;
-  if (!C || !C.lap || !C.lap.length) {
-    showError('Could not load the course. Expected course-data.js (setting window.COURSE) to sit next to this file.');
-    return;
+  function loadScript(src, ok, bad) {
+    var s = document.createElement('script');
+    s.src = src; s.onload = ok; s.onerror = bad;
+    document.head.appendChild(s);
   }
+  function loadCourse(slug) {
+    if (!/^[a-z0-9-]+$/.test(slug)) { showError('Invalid course name.'); return; }
+    loadScript('courses/' + slug + '/course-data.js', function () {
+      var C = window.COURSE;
+      if (!C || !C.segments || !C.segments.length) { showError('The data for course "' + slug + '" is not valid.'); return; }
+      boot(C, slug);
+    }, function () { showError('Could not load course "' + slug + '".'); });
+  }
+  var param = new URLSearchParams(location.search).get('course');
+  if (param !== null) loadCourse(param);
+  else loadScript('courses/index.js', function () {
+    var list = window.COURSES;
+    if (!list || !list.length) { showError('There are no courses yet.'); return; }
+    loadCourse(list[0].slug);
+  }, function () { showError('Could not load the course list.'); });
+
+function boot(C, slug) {
+  var STORE_KEY = 'streetview.index.' + slug;
+  document.title = C.name + ' \u2013 Street View';
+  document.getElementById('courseName').textContent = C.name;
+  var dl = document.getElementById('dlGpx'); dl.href = 'courses/' + slug + '/' + C.gpx;
 
   // ---- geometry ----
   var R = 6371000, rad = Math.PI / 180;
@@ -131,14 +164,19 @@
   }
 
   // ---- full course ----
-  var lapCount = C.lapCount || 1, course = [], pieceEnds = [], pieceNames = [];
+  var course = [], pieceEnds = [], pieceNames = [], jumpDefs = [];
   function addPiece(arr, name) {
     for (var i = (course.length ? 1 : 0); i < arr.length; i++) course.push(arr[i]);
     pieceEnds.push(course.length - 1);
     pieceNames.push(name);
   }
-  for (var l = 0; l < lapCount; l++) addPiece(C.lap, 'Lap ' + (l + 1) + ' of ' + lapCount);
-  if (C.lake && C.lake.length) addPiece(C.lake, 'Lake loop');
+  C.segments.forEach(function (sg) {
+    var reps = sg.repeat || 1;
+    for (var l = 0; l < reps; l++) {
+      addPiece(sg.points, reps > 1 ? sg.label + ' ' + (l + 1) + ' of ' + reps : sg.label);
+      jumpDefs.push(reps > 1 ? sg.label + ' ' + (l + 1) : sg.label);
+    }
+  });
 
   var cum = [0];
   for (var i = 1; i < course.length; i++) cum.push(cum[i - 1] + hav(course[i - 1], course[i]));
@@ -355,7 +393,7 @@
   points.forEach(function (p, i) {
     if (seen[p.section] !== undefined) return;
     seen[p.section] = i;
-    var label = p.section === 'Lake loop' ? 'Lake loop' : p.section.replace(/ of \d+$/, '');
+    var label = jumpDefs[pieceNames.indexOf(p.section)];
     var b = document.createElement('button');
     b.textContent = label;
     b.title = 'Jump to ' + p.section;
@@ -377,11 +415,12 @@
   });
   window.addEventListener('resize', function () { map.invalidateSize(); });
 
-  window.__viewer = { points: points, getIndex: function () { return index; }, setIndex: setIndex, turns: turns, nextTurn: nextTurn };
+  window.__viewer = { course: slug, points: points, getIndex: function () { return index; }, setIndex: setIndex, turns: turns, nextTurn: nextTurn };
 
   render();
   clearTimeout(svTimer);
   loadSV(); // first load without the debounce delay
+}
 })();
 </script>
 </body>

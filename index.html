@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Bike courses</title>
+<style>
+  :root { --bg:#f5f6f7; --fg:#1d2329; --muted:#5b6670; --line:#d5d9dd; --accent:#d9381e; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         background:var(--bg); color:var(--fg); }
+  main { max-width:760px; margin:0 auto; padding:20px 16px 40px; }
+  h1 { font-size:24px; margin:0 0 16px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px; margin-bottom:14px; }
+  .card h2 { font-size:18px; margin:0 0 6px; }
+  .card p { margin:0 0 10px; color:var(--muted); line-height:1.4; }
+  .km { font-weight:600; color:var(--fg); margin-bottom:12px; }
+  .links { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
+  .links a { color:var(--accent); }
+  .links a.primary { background:var(--accent); color:#fff; text-decoration:none; padding:7px 12px; border-radius:5px; }
+  #empty { display:none; padding:16px; background:#fff; border:1px solid var(--line); border-radius:8px; color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Bike courses</h1>
+  <div id="list"></div>
+  <div id="empty">No courses yet. Add one with tools/make_course.py (see README.md).</div>
+</main>
+<script src="courses/index.js" onerror="window.COURSES_FAILED = true"></script>
+<script>
+(function () {
+  'use strict';
+  var list = document.getElementById('list'), empty = document.getElementById('empty');
+  var courses = window.COURSES;
+  if (!courses || !courses.length) {
+    if (window.COURSES_FAILED) empty.textContent = 'Could not load the course list (courses/index.js).';
+    empty.style.display = 'block';
+    return;
+  }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  courses.forEach(function (c) {
+    var card = el('div', 'card');
+    card.appendChild(el('h2', '', c.name));
+    if (c.description) card.appendChild(el('p', '', c.description));
+    card.appendChild(el('div', 'km', c.km.toFixed(1) + ' km'));
+    var links = el('div', 'links');
+    var ride = el('a', 'primary', 'Ride it in Street View');
+    ride.href = 'viewer.html?course=' + encodeURIComponent(c.slug);
+    var dl = el('a', '', 'Download GPX');
+    dl.href = c.gpx;
+    dl.setAttribute('download', '');
+    links.appendChild(ride);
+    links.appendChild(dl);
+    card.appendChild(links);
+    list.appendChild(card);
+  });
+})();
+</script>
+</body>
+</html>
