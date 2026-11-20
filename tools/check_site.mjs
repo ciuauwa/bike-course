@@ -77,8 +77,10 @@ function checkHtml(name, required, forbidden) {
   for (const s of required) if (!html.includes(s)) err(`${name} must contain "${s}"`);
   for (const s of forbidden) if (html.includes(s)) err(`${name} must not contain "${s}"`);
 }
-checkHtml('index.html', [], []);
-checkHtml('viewer.html', ['turn-banner', 'tile.openstreetmap.org', 'server.arcgisonline.com', 'maps/embed?origin=mfe', 'URLSearchParams',
+const SHARE = ['og:image" content="https://bike.davidyosuanto.com/og-image.png"', 'og:title', 'og:description', 'rel="icon"', 'apple-touch-icon'];
+for (const f of ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png', 'og-image.png']) if (!fs.existsSync(path.join(root, f))) err(`missing ${f}`);
+checkHtml('index.html', SHARE, []);
+checkHtml('viewer.html', ['turn-banner', 'tile.openstreetmap.org', 'server.arcgisonline.com', 'maps/embed?origin=mfe', 'URLSearchParams', ...SHARE,
   'id="more"', 'id="morePanel"', 'id="legend"', 'id="stopsToggle"', 'id="stopsList"', '100dvh', 'safe-area-inset-bottom', 'viewport-fit=cover'],
   ['basemaps.cartocdn.com', 'src="course-data.js"']);
 

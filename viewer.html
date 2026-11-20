@@ -5,6 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Course Street View</title>
+<meta name="description" content="Gravel bike routes around Cisauk and BSD. Preview every turn in Street View, then download the GPX for your Garmin.">
+<meta name="theme-color" content="#d9381e">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Bike courses">
+<meta property="og:title" content="Bike courses: ride it in Street View">
+<meta property="og:description" content="Gravel bike routes around Cisauk and BSD. Preview every turn in Street View, then download the GPX for your Garmin.">
+<meta property="og:url" content="https://bike.davidyosuanto.com/viewer.html">
+<meta property="og:image" content="https://bike.davidyosuanto.com/og-image.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Bike courses: a route map with six numbered stops">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root { --bg:#f5f6f7; --fg:#1d2329; --muted:#5b6670; --line:#d5d9dd; --accent:#d9381e; --done:#1e6fd9; }
@@ -161,7 +177,7 @@
   <div id="panes">
     <div id="svPane">
       <div id="svWrap">
-        <iframe id="sv" title="Google Street View" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+        <iframe id="sv" title="Google Street View" allow="accelerometer; gyroscope" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
       </div>
       <div id="turn-banner" data-state="none" aria-live="polite"></div>
     </div>
