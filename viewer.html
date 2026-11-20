@@ -45,6 +45,9 @@
   #turn-banner .tb-text { font-size:18px; line-height:1.25; }
   #turn-banner .tb-then { font-size:13px; opacity:.85; margin-top:3px; }
   .turn-wrap { background:none; border:0; }
+  /* Zoomed out, turn markers would cover the route: show only the next turn until the map is zoomed in. */
+  .turns-far .turn-dot:not(.next) { display:none; }
+  .turns-far .turn-wrap { pointer-events:none; }
   .turn-dot { width:16px; height:16px; border-radius:50%; background:#fff; border:1.5px solid #444; color:#222;
     font-size:11px; line-height:13px; text-align:center; font-weight:700; }
   .turn-dot.next { background:#ffb300; border-color:#b36b00; box-shadow:0 0 0 3px rgba(255,179,0,.5); }
@@ -244,8 +247,8 @@ function boot(C, slug) {
   var ridden = L.polyline([], { color: '#1e6fd9', weight: 5, opacity: 0.95 }).addTo(map);
   map.fitBounds(full.getBounds(), { padding: [20, 20] });
   (C.stops || []).forEach(function (s) {
-    L.circleMarker([s[1], s[2]], { radius: 5, color: '#222', weight: 1.5, fillColor: '#ffd23f', fillOpacity: 1 })
-      .bindTooltip(String(s[0]), { permanent: true, direction: 'right', offset: [6, 0], className: 'stop-label' })
+    L.circleMarker([s[1], s[2]], { radius: 6, color: '#222', weight: 1.5, fillColor: '#ffd23f', fillOpacity: 1 })
+      .bindTooltip(String(s[0]), { permanent: false, direction: 'top', offset: [0, -6], className: 'stop-label' })
       .addTo(map);
   });
   function curIcon(h) {
@@ -303,6 +306,8 @@ function boot(C, slug) {
     mk.on('click', function (ev) { if (ev.originalEvent) L.DomEvent.stopPropagation(ev); setIndex(viewIdxBefore(t.d)); });
     turnMarkers.push(mk);
   });
+  function turnZoom() { map.getContainer().classList.toggle('turns-far', map.getZoom() < 16); }
+  map.on('zoomend', turnZoom); turnZoom();
   function setLit(i) {
     if (i === litMarker) return;
     if (litMarker >= 0 && turnMarkers[litMarker]) {
