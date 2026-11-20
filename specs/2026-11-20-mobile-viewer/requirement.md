@@ -22,7 +22,7 @@ Phone means a viewport 360 to 430 px wide, portrait. Reference size: 390 x 844.
 
 - AC1. No horizontal scroll at 360, 390 and 430 px wide (`documentElement.scrollWidth <= innerWidth`).
 - AC2. The viewer fits the screen: the page does not scroll vertically at 390 x 844 and 360 x 640.
-- AC3. At 390 x 844 the Street View is at least 38% of the viewport height and the map at least 22%.
+- AC3. At 390 x 844 the map is taller than the Street View image; the Street View is at least 28% of the viewport height. (Changed 2026-11-20 at the owner's request: the map was the smaller pane before.)
 - AC4. Previous, Play, Next, Prev turn and Next turn are each at least 44 x 44 px and sit in the bottom 35% of the screen.
 - AC5. On a phone the turn instruction never covers the Street View image: it is a strip directly below it. It still shows distance, instruction and the "Then:" hint, and turns amber for NOW.
 - AC6. Speed, section jumps, "Open this spot in Google Maps", "Download GPX" and the blank-view note are behind one "More" button, closed by default on a phone; it opens and closes.
