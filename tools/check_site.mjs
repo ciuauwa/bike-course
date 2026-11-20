@@ -78,8 +78,8 @@ function checkHtml(name, required, forbidden) {
   for (const s of forbidden) if (html.includes(s)) err(`${name} must not contain "${s}"`);
 }
 checkHtml('index.html', [], []);
-checkHtml('viewer.html', ['turn-banner', 'basemaps.cartocdn.com', 'maps/embed?origin=mfe', 'URLSearchParams'],
-  ['tile.openstreetmap.org', 'src="course-data.js"']);
+checkHtml('viewer.html', ['turn-banner', 'tile.openstreetmap.org', 'server.arcgisonline.com', 'maps/embed?origin=mfe', 'URLSearchParams'],
+  ['basemaps.cartocdn.com', 'src="course-data.js"']);
 
 if (errors.length) {
   console.error('SITE CHECK FAILED');
