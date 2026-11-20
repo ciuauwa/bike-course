@@ -17,8 +17,12 @@
   .card p { margin:0 0 10px; color:var(--muted); line-height:1.4; }
   .km { font-weight:600; color:var(--fg); margin-bottom:12px; }
   .links { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
-  .links a { color:var(--accent); }
-  .links a.primary { background:var(--accent); color:#fff; text-decoration:none; padding:7px 12px; border-radius:5px; }
+  .links a { color:var(--accent); display:inline-flex; align-items:center; min-height:44px; }
+  .links a.primary { background:var(--accent); color:#fff; text-decoration:none; padding:0 16px; border-radius:5px; }
+  @media (max-width:480px) {
+    .links a { justify-content:center; text-align:center; }
+    .links a.primary { flex:1 1 100%; }
+  }
   #empty { display:none; padding:16px; background:#fff; border:1px solid var(--line); border-radius:8px; color:var(--muted); }
 </style>
 </head>

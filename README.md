@@ -2,6 +2,8 @@
 
 A plain static site (no framework, no build step) for riding bike courses virtually in Google Street View. `index.html` lists the courses, `viewer.html?course=<slug>` plays one, and each course has a downloadable GPX. It works when hosted (Vercel) and when opened from disk (file://).
 
+On a phone the viewer fits the screen without scrolling: Street View on top, the turn instruction as a strip directly under the image (never over it), the map below, and the controls in a dock at the bottom within thumb reach. Speed, section jumps, the Google Maps link, the GPX link and the blank-view note sit behind the "More" button, which opens a sheet above the dock. On a desktop-width window the controls stay in the top bar and the turn banner sits over the Street View.
+
 ## Layout
 
 ```
