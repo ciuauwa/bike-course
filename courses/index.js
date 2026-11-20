@@ -3,8 +3,8 @@ window.COURSES = [
   {
     "slug": "aeris-3-laps-lake",
     "name": "Aeris 3 Laps + Lake Gravel Loop",
-    "description": "Three laps of the CitraGarden Serpong boulevard, then a loop past Danau Jabon, Lapangan Sepak Bola Setu and Danau RD2. Mostly paved, flat.",
-    "km": 18.1,
+    "description": "Three laps of the CitraGarden Serpong boulevard, then a loop past Danau Jabon, the Warung Bu Endi Jabon rest stop, Lapangan Sepak Bola Setu and Danau RD2. Mostly paved, flat.",
+    "km": 19.9,
     "gpx": "courses/aeris-3-laps-lake/aeris-3-laps-lake-gravel.gpx"
   }
 ];

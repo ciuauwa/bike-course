@@ -1,7 +1,7 @@
 {
   "slug": "aeris-3-laps-lake",
   "name": "Aeris 3 Laps + Lake Gravel Loop",
-  "description": "Three laps of the CitraGarden Serpong boulevard, then a loop past Danau Jabon, Lapangan Sepak Bola Setu and Danau RD2. Mostly paved, flat.",
+  "description": "Three laps of the CitraGarden Serpong boulevard, then a loop past Danau Jabon, the Warung Bu Endi Jabon rest stop, Lapangan Sepak Bola Setu and Danau RD2. Mostly paved, flat.",
   "gpx": "aeris-3-laps-lake-gravel.gpx",
   "activity": "gravel_cycling",
   "profile": "trekking",
@@ -9,12 +9,13 @@
     { "label": "Lap", "repeat": 3,
       "waypoints": [[-6.329311, 106.63671], [-6.3387649, 106.6283002], [-6.329311, 106.63671]] },
     { "label": "Lake loop", "repeat": 1,
-      "waypoints": [[-6.329311, 106.63671], [-6.3387649, 106.6283002], [-6.3410515, 106.6250627], [-6.3453937, 106.622487], [-6.3490381, 106.6221287], [-6.3412, 106.6322], [-6.329311, 106.63671]] }
+      "waypoints": [[-6.329311, 106.63671], [-6.3387649, 106.6283002], [-6.3410515, 106.6250627], [-6.3363876, 106.6247291], [-6.3453937, 106.622487], [-6.3490381, 106.6221287], [-6.3412, 106.6322], [-6.329311, 106.63671]] }
   ],
   "stops": [
     ["Roundabout (start/finish)", -6.329311, 106.63671],
     ["Resort Club LakePark", -6.3387649, 106.6283002],
     ["Danau Jabon", -6.3410515, 106.6250627],
+    ["Warung Bu Endi Jabon (rest stop)", -6.3363876, 106.6247291],
     ["Lapangan Sepak Bola Setu", -6.3453937, 106.622487],
     ["Danau RD2", -6.3490381, 106.6221287]
   ],
