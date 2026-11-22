@@ -92,7 +92,7 @@ const SHARE = ['og:image" content="https://bike.davidyosuanto.com/og-image.png"'
 for (const f of ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png', 'og-image.png']) if (!fs.existsSync(path.join(root, f))) err(`missing ${f}`);
 checkHtml('index.html', [...SHARE, 'leaflet@1.9.4', 'tile.openstreetmap.org', 'server.arcgisonline.com', '__courseMaps'], []);
 checkHtml('viewer.html', ['turn-banner', 'tile.openstreetmap.org', 'server.arcgisonline.com', 'maps/embed?origin=mfe', 'URLSearchParams', ...SHARE,
-  'id="more"', 'id="morePanel"', 'id="legend"', 'id="stopsToggle"', 'id="stopsList"', 'id="locate"', 'id="locInfo"', 'id="locJump"', 'watchPosition', '100dvh', 'safe-area-inset-bottom', 'viewport-fit=cover'],
+  'id="more"', 'id="morePanel"', 'id="legend"', 'id="stopsToggle"', 'id="stopsList"', 'id="locate"', 'id="locInfo"', 'id="locJump"', 'id="locClose"', 'brouter.de/brouter', 'aria-label="Where am I"', 'watchPosition', '100dvh', 'safe-area-inset-bottom', 'viewport-fit=cover'],
   ['basemaps.cartocdn.com', 'src="course-data.js"']);
 
 // Route checks (offline): unintended spurs, tiny loops, stray U-turns. See tools/check_route.py.

@@ -84,17 +84,27 @@
   #turn-banner .tb-main { font-size:20px; font-weight:700; line-height:1.2; }
   #turn-banner .tb-text { font-size:18px; line-height:1.25; }
   #turn-banner .tb-then { font-size:13px; opacity:.85; margin-top:3px; }
-  /* Where am I: sits under the Leaflet zoom control (top-right); the info box is bottom-left, above the attribution. */
-  #locate { position:absolute; right:10px; top:88px; z-index:1000; width:44px; min-height:44px; padding:2px; font:inherit; font-size:12px; line-height:1.15;
-    font-weight:600; color:var(--fg); background:#fff; border:2px solid rgba(0,0,0,.2); border-radius:4px; background-clip:padding-box; cursor:pointer; }
+  /* Where am I: an icon button under the Leaflet zoom control (top-right); the info box is bottom-left, above the attribution. */
+  #locate { position:absolute; right:10px; top:85px; z-index:1000; width:34px; height:34px; padding:0; margin:0; display:flex; align-items:center; justify-content:center;
+    color:#1d2329; background:#fff; border:2px solid rgba(0,0,0,.2); border-radius:4px; background-clip:padding-box; cursor:pointer; }
+  #locate svg { display:block; width:22px; height:22px; pointer-events:none; }
   #locate:hover { background:#f4f4f4; }
-  #locate[aria-pressed="true"] { background:#e6f4ea; border-color:#1a8f3c; color:#0f5c25; }
-  #locInfo { position:absolute; left:8px; bottom:28px; z-index:1001; max-width:calc(100% - 78px); max-width:min(340px, calc(100% - 78px));
+  #locate[aria-pressed="true"] { background:#1a8f3c; border-color:#1a8f3c; color:#fff; }
+  #locate[aria-pressed="true"]:hover { background:#157a33; }
+  #locate:focus-visible { outline:3px solid #1e6fd9; outline-offset:2px; }
+  #locate.loc-wait { animation:locPulse 1.3s ease-in-out infinite; }
+  @keyframes locPulse { 0% { box-shadow:0 0 0 0 rgba(26,143,60,.55); } 70% { box-shadow:0 0 0 10px rgba(26,143,60,0); } 100% { box-shadow:0 0 0 0 rgba(26,143,60,0); } }
+  @media (prefers-reduced-motion: reduce) { #locate.loc-wait { animation:none; } }
+  #locInfo { position:absolute; left:8px; bottom:28px; z-index:1001; width:max-content; max-width:min(360px, calc(100% - 16px));
     max-height:calc(100% - 100px); overflow-y:auto; padding:6px 10px; background:rgba(255,255,255,.97); border-radius:6px;
     font-size:13px; line-height:1.35; color:var(--fg); box-shadow:0 1px 4px rgba(0,0,0,.25); overflow-wrap:anywhere; }
   #locInfo[hidden], #locJump[hidden] { display:none; }
-  #locJump { display:block; margin-top:6px; font:inherit; font-size:13px; padding:6px 10px; min-height:36px; border:1px solid var(--line); background:#fff; border-radius:5px; cursor:pointer; }
-  #locJump:hover { background:#eef0f2; }
+  #locActions { display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-top:6px; }
+  #locJump, #locClose { font:inherit; border:1px solid var(--line); background:#fff; border-radius:5px; cursor:pointer; color:var(--fg); }
+  #locJump { font-size:13px; padding:4px 10px; min-height:36px; }
+  #locClose { width:36px; height:36px; padding:0; font-size:22px; line-height:1; }
+  #locJump:hover, #locClose:hover { background:#eef0f2; }
+  #locPrivacy { display:block; margin-top:2px; font-size:11.5px; color:#66707a; }
   .turn-wrap { background:none; border:0; }
   /* Zoomed out, turn markers would cover the route: show only the next turn until the map is zoomed in. */
   .turns-far .turn-dot:not(.next) { display:none; }
@@ -152,7 +162,13 @@
     #morePanel #note { padding:4px 0; border:0; }
     #stopsToggle { min-height:28px; padding:4px 10px; }
     #stopsList li { padding:3px 0; }
-    #locJump { min-height:44px; }
+    #locate { width:44px; height:44px; }
+    #locInfo { left:8px; right:8px; bottom:26px; width:auto; max-width:none; max-height:96px; display:flex; align-items:center; gap:6px; padding:4px 4px 4px 10px; overflow:hidden; }
+    #locInfo[hidden] { display:none; }
+    #locText { flex:1 1 0; min-width:0; max-height:57px; overflow-y:auto; font-size:14px; line-height:1.3; }
+    #locActions { flex:none; margin:0; gap:4px; }
+    #locJump { width:84px; max-width:120px; min-height:44px; padding:2px 6px; font-size:13px; line-height:1.2; }
+    #locClose { width:44px; height:44px; }
   }
   /* Landscape phone: panes side by side, dock in one compact row. */
   @media (max-height:480px) and (orientation:landscape) {
@@ -203,10 +219,13 @@
         </div>
         <ol id="stopsList" hidden></ol>
       </div>
-      <button id="locate" type="button" aria-pressed="false" title="Show where you are on the course">Where am I</button>
+      <button id="locate" type="button" aria-pressed="false" aria-label="Where am I" title="Where am I"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg></button>
       <div id="locInfo" role="status" aria-live="polite" hidden>
         <span id="locText"></span>
-        <button id="locJump" type="button" hidden>Show the next turn from here</button>
+        <div id="locActions">
+          <button id="locJump" type="button" hidden>Next turn from here</button>
+          <button id="locClose" type="button" aria-label="Turn off location" title="Turn off location">&times;</button>
+        </div>
       </div>
     </div>
   </div>
@@ -236,7 +255,7 @@
       <div class="group" id="jumps"></div>
       <a id="gmaps" target="_blank" rel="noopener" href="#">Open this spot in Google Maps</a>
       <a id="dlGpx" download href="#">Download GPX</a>
-      <p id="note">A blank or black view means Google has no Street View imagery at this spot. Press Next to move on.</p>
+      <p id="note">A blank or black view means Google has no Street View imagery at this spot. Press Next to move on.<span id="locPrivacy">Where am I sends your position to brouter.de to find the road back.</span></p>
     </div>
   </div>
 </div>
@@ -678,7 +697,7 @@ function boot(C, slug) {
   window.addEventListener('resize', function () { map.invalidateSize(); refreshMap(); });
 
   // ---- where am I ----
-  // The position is only used in this page: it is never stored and never sent anywhere.
+  // The position is never stored. It is sent to brouter.de only while Where am I is on and the fix is 30 m to 20 km off the course, to get the road back.
   // BEGIN nearest-pure
   // Nearest point on the true course polyline (point to segment, not just vertices). The same road is ridden several
   // times, so among the segments within NEAR_TIE_M of the closest one, take the first whose along-course distance is
@@ -710,17 +729,35 @@ function boot(C, slug) {
   }
   // END nearest-pure
 
-  var ON_ROUTE_M = 30, LOW_ACC_M = 100, LOC_GREEN = '#1a8f3c';
+  var ON_ROUTE_M = 30, FAR_M = 20000, LOW_ACC_M = 100, LOC_GREEN = '#1a8f3c';
+  var AHEAD_CANDIDATE_M = 400, ROUTE_MOVE_M = 40, ROUTE_GAP_MS = 15000, ROUTE_TIMEOUT_MS = 10000;
+  var BROUTER_URL = 'https://brouter.de/brouter?lonlats=';
   var COMPASS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
   var MSG_BLOCKED = 'Location is blocked. Allow location for this site in your browser settings, then tap Where am I again.';
   var MSG_FAILED = 'Could not get your location. Check that GPS is on and try again.';
   var MSG_NOGEO = 'This browser cannot share your location here.';
-  var locBtn = $('locate'), locInfo = $('locInfo'), locText = $('locText'), locJump = $('locJump');
-  var locOn = false, locWatch = null, locFirst = true, locLast = null, locShown = null;
+  var PHONE_MQ = '(max-width:800px), (max-height:480px) and (orientation:landscape)';
+  var locBtn = $('locate'), locInfo = $('locInfo'), locText = $('locText'), locJump = $('locJump'), locClose = $('locClose');
+  var locOn = false, locWatch = null, locFirst = true, locLast = null, locShown = null, locFix = null, locAcc = 0;
   var locDot = null, locCircle = null, locLine = null;
+  // Road route state. locRoute is the route being drawn (or null); the request fields drive the throttle.
+  var locRoute = null;            // { roadM, targetAlongM, layers: [casing, line, ring], points }
+  var locReqId = 0, locInFlight = false, locCtl = null, locReqTimer = null, locReqCount = 0;
+  var locReqFix = null, locReqAt = 0, locFreshEpisode = true, locRoadFailed = false, locRouteFitted = false;
   L.DomEvent.disableClickPropagation(locBtn);
   L.DomEvent.disableClickPropagation(locInfo);
   L.DomEvent.disableScrollPropagation(locInfo);
+
+  // Keep the button a fixed gap under the zoom control, whatever Leaflet's control size is.
+  function locPlaceBtn() {
+    var z = map.zoomControl && map.zoomControl.getContainer && map.zoomControl.getContainer();
+    if (!z) return;
+    var zr = z.getBoundingClientRect(), pr = $('mapPane').getBoundingClientRect();
+    if (zr.height > 0 && pr.height > 0) locBtn.style.top = Math.round(zr.bottom - pr.top + 9) + 'px';
+  }
+  locPlaceBtn();
+  window.addEventListener('resize', locPlaceBtn);
+  window.addEventListener('orientationchange', function () { setTimeout(locPlaceBtn, 100); });
 
   function compassName(b) { return COMPASS[Math.round((((b % 360) + 360) % 360) / 45) % 8]; }
   function fmtDistance(m) { var r = Math.round(m / 10) * 10; return r >= 1000 ? (m / 1000).toFixed(1) + ' km' : r + ' m'; }
@@ -729,43 +766,157 @@ function boot(C, slug) {
     locJump.hidden = !withJump;
     locInfo.hidden = false;
   }
+  // Pulse the button while we wait for the first fix or for the first road route.
+  function locSyncBtn() {
+    var waiting = locOn && (locLast === null || (locInFlight && !locRoute));
+    if (waiting) locBtn.classList.add('loc-wait'); else locBtn.classList.remove('loc-wait');
+  }
+  function locClearRoute() {
+    if (locRoute) locRoute.layers.forEach(function (l) { map.removeLayer(l); });
+    locRoute = null;
+  }
+  function locClearLine() { if (locLine) { map.removeLayer(locLine); locLine = null; } }
+  // Forget any batch in flight: its answer is ignored (the id no longer matches) and its fetches are aborted.
+  function locCancelBatch() {
+    locReqId++;
+    locInFlight = false;
+    clearTimeout(locReqTimer); locReqTimer = null;
+    if (locCtl) { try { locCtl.abort(); } catch (e) {} locCtl = null; }
+  }
   function locClearLayers() {
-    [locDot, locCircle, locLine].forEach(function (l) { if (l) map.removeLayer(l); });
-    locDot = locCircle = locLine = null;
+    [locDot, locCircle].forEach(function (l) { if (l) map.removeLayer(l); });
+    locDot = locCircle = null;
+    locClearLine(); locClearRoute();
   }
   function locStop() {
     if (locWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(locWatch);
-    locWatch = null; locOn = false; locLast = null; locShown = null;
+    locWatch = null; locOn = false; locLast = null; locShown = null; locFix = null;
+    locCancelBatch();
+    locReqFix = null; locReqAt = 0; locFreshEpisode = true; locRoadFailed = false; locRouteFitted = false;
     locClearLayers();
     locBtn.setAttribute('aria-pressed', 'false');
     locInfo.hidden = true; locJump.hidden = true; locText.textContent = '';
+    locSyncBtn();
   }
   function locFail(msg) { locStop(); locSay(msg, false); }
   function locBegin() {
-    locOn = true; locFirst = true; locLast = null;
+    locOn = true; locFirst = true; locLast = null; locRouteFitted = false;
     locBtn.setAttribute('aria-pressed', 'true');
     locSay('Finding your location…', false);
+    locSyncBtn();
+  }
+
+  // ---- road route back to the course (BRouter) ----
+  function alongPoint(d) { d = Math.max(0, Math.min(total, d)); var p = posAt(d); return { lat: p[0], lon: p[1], alongM: d }; }
+  function fetchRoute(fix, t, signal) {
+    var url = BROUTER_URL + fix[1].toFixed(6) + ',' + fix[0].toFixed(6) + '%7C' + t.lon.toFixed(6) + ',' + t.lat.toFixed(6) +
+      '&profile=trekking&alternativeidx=0&format=geojson';
+    return fetch(url, signal ? { signal: signal } : {}).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function (gj) {
+      var f = gj && gj.features && gj.features[0], c = f && f.geometry && f.geometry.coordinates;
+      if (!c || c.length < 2) throw new Error('no route');
+      var ll = [], len = 0, i;
+      for (i = 0; i < c.length; i++) {
+        if (!isFinite(c[i][0]) || !isFinite(c[i][1])) throw new Error('bad coordinates');
+        ll.push([c[i][1], c[i][0]]);
+        if (i) len += hav(ll[i - 1], ll[i]);
+      }
+      var m = parseFloat(f.properties && f.properties['track-length']);
+      return { roadM: isFinite(m) && m > 0 ? m : len, latlngs: ll, target: t };
+    });
+  }
+  // One batch: the nearest course point (a) and the point 400 m further along (b), fetched in parallel.
+  // The shorter road route wins; on a tie (b), which is further along. One failing is fine; both failing keeps the straight line.
+  function locRequestRoute(fix, r) {
+    var id = ++locReqId;
+    locReqFix = fix; locReqAt = Date.now(); locFreshEpisode = false;
+    if (typeof fetch !== 'function') { locRoadFailed = true; return; } // no fetch: keep the straight line
+    var cands = [{ lat: r.lat, lon: r.lon, alongM: r.alongM }], ahead = alongPoint(r.alongM + AHEAD_CANDIDATE_M);
+    if (ahead.alongM - r.alongM > 1) cands.push(ahead); // at the very end of the course (b) is the same point as (a)
+    locInFlight = true; locRoadFailed = false;
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    locCtl = ctl;
+    var timeout = new Promise(function (resolve, reject) {
+      locReqTimer = setTimeout(function () { if (ctl) { try { ctl.abort(); } catch (e) {} } reject(new Error('timeout')); }, ROUTE_TIMEOUT_MS);
+    });
+    var jobs = cands.map(function (t) {
+      locReqCount++;
+      var p;
+      try { p = fetchRoute(fix, t, ctl ? ctl.signal : null); } catch (e) { p = Promise.reject(e); }
+      return Promise.race([p, timeout]).then(function (x) { return x; }, function () { return null; });
+    });
+    Promise.all(jobs).then(function (results) {
+      if (id !== locReqId || !locOn) return; // stale: a newer batch started, or Where am I was turned off
+      clearTimeout(locReqTimer); locReqTimer = null; locCtl = null; locInFlight = false;
+      var best = null;
+      results.forEach(function (x) { if (x && (!best || x.roadM <= best.roadM)) best = x; });
+      if (!best) { locRoadFailed = true; locRender(); return; }
+      locRoadFailed = false;
+      locClearRoute();
+      locRoute = locDrawRoute(best, fix);
+      if (!locRouteFitted) { // fit to the route on the first success only
+        locRouteFitted = true;
+        var phone = !!(window.matchMedia && window.matchMedia(PHONE_MQ).matches);
+        map.fitBounds(L.latLngBounds(locRoute.points), { paddingTopLeft: [40, 56], paddingBottomRight: [64, phone ? 136 : 110], maxZoom: 17 });
+      }
+      locRender();
+    });
+  }
+  function locDrawRoute(best, fix) {
+    var pts = best.latlngs.slice(), tg = [best.target.lat, best.target.lon];
+    if (hav(fix, pts[0]) > 2) pts.unshift(fix);
+    if (hav(pts[pts.length - 1], tg) > 2) pts.push(tg);
+    var casing = L.polyline(pts, { color: '#fff', weight: 8, opacity: 0.95, lineJoin: 'round', lineCap: 'round', interactive: false }).addTo(map);
+    var line = L.polyline(pts, { color: LOC_GREEN, weight: 5, opacity: 1, lineJoin: 'round', lineCap: 'round', interactive: false }).addTo(map);
+    var ring = L.circleMarker(tg, { radius: 7, color: LOC_GREEN, weight: 3, opacity: 1, fillColor: '#fff', fillOpacity: 0.5, interactive: false }).addTo(map);
+    return { roadM: best.roadM, targetAlongM: best.target.alongM, layers: [casing, line, ring], points: pts };
+  }
+
+  // Draw everything that depends on the latest fix and the route state, and write the message.
+  function locRender() {
+    if (!locOn || !locLast || !locFix) { locSyncBtn(); return; }
+    var r = locLast, fix = locFix, np = [r.lat, r.lon], off = r.distM > ON_ROUTE_M, far = r.distM > FAR_M;
+    var km = 'km ' + (r.alongM / 1000).toFixed(2), msg, jump = true;
+    if (!off || far) { locClearRoute(); locClearLine(); }
+    else if (locRoute) locClearLine();
+    else if (!locLine) locLine = L.polyline([fix, np], { color: LOC_GREEN, weight: 3, opacity: 0.9, dashArray: '6 8', interactive: false }).addTo(map);
+    else locLine.setLatLngs([fix, np]);
+    if (locDot) locDot.bringToFront();
+    if (!off) msg = 'You are on the route, at ' + km + ' of ' + (total / 1000).toFixed(2) + '.';
+    else if (far) { msg = 'You are ' + (r.distM / 1000).toFixed(1) + ' km from this course.'; jump = false; }
+    else if (locRoute) msg = 'You are off the route. Follow the green line for ' + fmtDistance(locRoute.roadM) + ' to rejoin it at km ' + (locRoute.targetAlongM / 1000).toFixed(2) + '.';
+    else {
+      msg = 'You are ' + fmtDistance(r.distM) + ' from the route. Head ' + compassName(r.bearing) + ' to rejoin it at ' + km + '.';
+      if (locRoadFailed) msg += ' (road route unavailable)';
+    }
+    if (locAcc > LOW_ACC_M) msg += ' GPS accuracy is low (±' + Math.round(locAcc) + ' m).';
+    locSay(msg, jump);
+    locSyncBtn();
+  }
+  // Throttle: never two batches at once; a new one only after the fix moved more than 40 m AND 15 s have passed.
+  // (The very first request of a session goes out at once. After a failure the same rule applies: no instant retry.)
+  function locWantRoute(fix) {
+    if (locInFlight) return false;
+    if (locReqFix === null) return true;
+    var waited = Date.now() - locReqAt >= ROUTE_GAP_MS;
+    if (locFreshEpisode) return waited; // was on the course (or too far) and is off again: ask again once the gap has passed
+    return hav(fix, locReqFix) > ROUTE_MOVE_M && waited;
   }
   function locOnFix(lat, lon, acc) {
     if (!isFinite(lat) || !isFinite(lon)) return;
     acc = isFinite(acc) && acc > 0 ? acc : 0;
     var r = nearestOnCourse(lat, lon, points[index]._d), fix = [lat, lon], np = [r.lat, r.lon];
-    locLast = r;
+    locLast = r; locFix = fix; locAcc = acc;
     if (!locCircle) locCircle = L.circle(fix, { radius: acc, color: LOC_GREEN, weight: 1, opacity: 0.6, fillColor: LOC_GREEN, fillOpacity: 0.12, interactive: false }).addTo(map);
     else { locCircle.setLatLng(fix); locCircle.setRadius(acc); }
-    var off = r.distM > ON_ROUTE_M;
-    if (off) {
-      if (!locLine) locLine = L.polyline([fix, np], { color: LOC_GREEN, weight: 3, opacity: 0.9, dashArray: '6 8', interactive: false }).addTo(map);
-      else locLine.setLatLngs([fix, np]);
-    } else if (locLine) { map.removeLayer(locLine); locLine = null; }
     if (!locDot) locDot = L.circleMarker(fix, { radius: 8, color: '#fff', weight: 3, opacity: 1, fillColor: LOC_GREEN, fillOpacity: 1, interactive: false }).addTo(map);
     else locDot.setLatLng(fix);
-    locDot.bringToFront();
-    var km = 'km ' + (r.alongM / 1000).toFixed(2), msg;
-    if (!off) msg = 'You are on the route, at ' + km + ' of ' + (total / 1000).toFixed(2) + '.';
-    else msg = 'You are ' + fmtDistance(r.distM) + ' from the route. Head ' + compassName(r.bearing) + ' to rejoin it at ' + km + '.';
-    if (acc > LOW_ACC_M) msg += ' GPS accuracy is low (±' + Math.round(acc) + ' m).';
-    locSay(msg, true);
+    if (r.distM <= ON_ROUTE_M || r.distM > FAR_M) { // on the course, or too far to route: drop any route and ignore a batch still in flight
+      locCancelBatch(); locRoadFailed = false; locFreshEpisode = true;
+    } else if (locWantRoute(fix)) locRequestRoute(fix, r);
+    locRender();
     if (locFirst) { // fit once; later fixes never move the map
       locFirst = false;
       map.fitBounds(L.latLngBounds([fix, np]), { padding: [50, 50], maxZoom: 17 });
@@ -788,9 +939,10 @@ function boot(C, slug) {
     return best;
   }
   locBtn.addEventListener('click', function () { if (locOn) locStop(); else locStart(); });
+  locClose.addEventListener('click', function () { locStop(); });
   locJump.addEventListener('click', function () {
     if (!locLast) return;
-    var i = nearestViewIdx(locLast.alongM);
+    var i = nearestViewIdx(locRoute ? locRoute.targetAlongM : locLast.alongM);
     setIndex(i);
     map.panTo([points[i].lat, points[i].lon]);
   });
@@ -798,7 +950,14 @@ function boot(C, slug) {
     nearest: function (lat, lon) { return nearestOnCourse(lat, lon, points[index]._d); },
     setFix: function (lat, lon, accuracyM) { if (!locOn) locBegin(); locOnFix(Number(lat), Number(lon), Number(accuracyM)); },
     stop: locStop,
-    isOn: function () { return locOn; }
+    isOn: function () { return locOn; },
+    getState: function () {
+      var far = !!locLast && locLast.distM > FAR_M;
+      return { on: locOn, distM: locLast ? locLast.distM : null, alongM: locLast ? locLast.alongM : null,
+        roadM: locRoute ? locRoute.roadM : null,
+        targetAlongM: locRoute ? locRoute.targetAlongM : (locLast && !far ? locLast.alongM : null),
+        routePoints: locRoute ? locRoute.points.length : 0, message: locText.textContent, requests: locReqCount };
+    }
   };
 
   window.__viewer = { course: slug, points: points, getIndex: function () { return index; }, setIndex: setIndex, lineCheck: lineCheck, turns: turns, nextTurn: nextTurn, stopMarkers: stopMarkers, locate: locate };
