@@ -7,7 +7,7 @@ window.COURSES = [
     "km": 19.9,
     "gpx": "courses/aeris-3-laps-lake/aeris-3-laps-lake-gravel.gpx",
     "ascentM": 32,
-    "turns": 48,
+    "turns": 43,
     "stops": [
       [
         "Roundabout (start/finish)",
@@ -49,7 +49,7 @@ window.COURSES = [
       {
         "label": "Lake loop",
         "repeat": 1,
-        "km": 9.9
+        "km": 9.8
       }
     ],
     "preview": [
@@ -312,18 +312,6 @@ window.COURSES = [
       [
         -6.34503,
         106.62114
-      ],
-      [
-        -6.3452,
-        106.62259
-      ],
-      [
-        -6.3454,
-        106.62257
-      ],
-      [
-        -6.3452,
-        106.62259
       ],
       [
         -6.34543,

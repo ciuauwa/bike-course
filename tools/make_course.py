@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Build one course: python3 tools/make_course.py courses/<slug>/course.json
+"""Build one course: python3 tools/make_course.py courses/<slug>/course.json [--force]
 
 Routes each segment with the public BRouter service, then writes the GPX,
 courses/<slug>/course-data.js (with computed turns) and courses/index.js.
+Before writing anything it runs the route checker (tools/check_route.py) on the
+fresh route; on errors it prints them and exits 1 without writing, unless --force.
 Python 3 standard library only.
 """
 import bisect
@@ -14,6 +16,10 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import check_route  # noqa: E402
 
 BROUTER = "https://brouter.de/brouter"
 
@@ -261,9 +267,11 @@ def write_index(root):
 
 # ------------------------------------------------------------------- main
 def main():
-    if len(sys.argv) != 2:
-        fail("usage: python3 tools/make_course.py courses/<slug>/course.json")
-    cj = os.path.abspath(sys.argv[1])
+    args = [a for a in sys.argv[1:] if a != "--force"]
+    force = "--force" in sys.argv[1:]
+    if len(args) != 1 or len(sys.argv) - 1 - len(args) > 1:
+        fail("usage: python3 tools/make_course.py courses/<slug>/course.json [--force]")
+    cj = os.path.abspath(args[0])
     if not os.path.isfile(cj):
         fail("not found: " + cj)
     folder = os.path.dirname(cj)
@@ -277,11 +285,25 @@ def main():
         fail("slug '%s' does not match folder '%s'" % (cfg["slug"], os.path.basename(folder)))
 
     pieces, full, ascent_m = build_pieces(cfg)
-    write_gpx(os.path.join(folder, cfg["gpx"]), cfg, full)
 
     latlon = [[p[1], p[0]] for p in full]
     RB = [tuple(r) for r in cfg.get("roundabouts", [])]
     total, turns = compute_turns(latlon, RB)
+
+    findings, allowed = check_route.analyze(cfg, latlon, turns)
+    for f in allowed:
+        print(check_route.format_finding(f, "ALLOWED"))
+    for f in findings:
+        print(check_route.format_finding(f))
+    errors = [f for f in findings if f["level"] == "error"]
+    if errors and not force:
+        print("ROUTE CHECK FAILED: %d error(s); nothing was written. Fix the waypoints, declare an intended "
+              "turn-around in course.json \"outAndBack\", or rerun with --force." % len(errors), file=sys.stderr)
+        sys.exit(1)
+    if errors:
+        print("WARNING: --force given, writing despite %d route error(s)" % len(errors))
+
+    write_gpx(os.path.join(folder, cfg["gpx"]), cfg, full)
 
     data = {
         "slug": cfg["slug"],

@@ -550,13 +550,50 @@ function boot(C, slug) {
     renderTurns();
     curMarker.setLatLng([p.lat, p.lon]);
     curMarker.setIcon(curIcon(Math.round(p.heading)));
-    var done = [];
-    for (var i = 0; i <= index; i++) done.push([points[i].lat, points[i].lon]);
-    ridden.setLatLngs(done);
+    ridden.setLatLngs(riddenLine(index));
     if (!map.getBounds().pad(-0.05).contains([p.lat, p.lon])) map.panTo([p.lat, p.lon]);
     try { localStorage.setItem(STORE_KEY, String(index)); } catch (e) {}
     clearTimeout(svTimer);
     svTimer = setTimeout(loadSV, 250);
+  }
+  // The ridden (blue) line follows the true route geometry: every course vertex up to the
+  // current distance, then the exact current position (the marker). Not the 40 m view points,
+  // which would cut every corner.
+  function riddenLine(idx) {
+    var d = points[idx]._d, lo = 0, hi = cum.length - 1;
+    while (lo < hi) { var mid = (lo + hi + 1) >> 1; if (cum[mid] <= d) lo = mid; else hi = mid - 1; }
+    var line = course.slice(0, lo + 1), p = posAt(d), last = line[line.length - 1];
+    if (p[0] !== last[0] || p[1] !== last[1]) line.push(p);
+    return line;
+  }
+  // Largest distance (m) from any vertex or segment midpoint of the ridden line to the true
+  // course polyline, over every view point. Reads only; does not touch the map or the index.
+  function lineCheck() {
+    var lat0 = course[0][0], kY = 111194.9, kX = kY * Math.cos(lat0 * Math.PI / 180);
+    var X = course.map(function (p) { return (p[1] - course[0][1]) * kX; });
+    var Y = course.map(function (p) { return (p[0] - lat0) * kY; });
+    function dev(lat, lon) {
+      var px = (lon - course[0][1]) * kX, py = (lat - lat0) * kY, best = Infinity;
+      for (var s = 0; s + 1 < course.length; s++) {
+        var ax = X[s], ay = Y[s], dx = X[s + 1] - ax, dy = Y[s + 1] - ay, L2 = dx * dx + dy * dy;
+        var t = L2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L2)) : 0;
+        var e = Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+        if (e < best) best = e;
+      }
+      return best;
+    }
+    var cache = {}; // the same vertices recur at every later index, so measure each once
+    function devAt(lat, lon) { var k = lat + ',' + lon; return k in cache ? cache[k] : (cache[k] = dev(lat, lon)); }
+    var maxDevM = 0, worstIndex = 0;
+    for (var n = 0; n < points.length; n++) {
+      var line = riddenLine(n), worst = 0;
+      for (var v = 0; v < line.length; v++) {
+        worst = Math.max(worst, devAt(line[v][0], line[v][1]));
+        if (v) worst = Math.max(worst, devAt((line[v - 1][0] + line[v][0]) / 2, (line[v - 1][1] + line[v][1]) / 2));
+      }
+      if (worst > maxDevM) { maxDevM = worst; worstIndex = n; }
+    }
+    return { maxDevM: maxDevM, worstIndex: worstIndex };
   }
   function setIndex(i) {
     i = Math.max(0, Math.min(points.length - 1, Math.round(Number(i)) || 0));
@@ -623,7 +660,7 @@ function boot(C, slug) {
   });
   window.addEventListener('resize', function () { map.invalidateSize(); refreshMap(); });
 
-  window.__viewer = { course: slug, points: points, getIndex: function () { return index; }, setIndex: setIndex, turns: turns, nextTurn: nextTurn, stopMarkers: stopMarkers };
+  window.__viewer = { course: slug, points: points, getIndex: function () { return index; }, setIndex: setIndex, lineCheck: lineCheck, turns: turns, nextTurn: nextTurn, stopMarkers: stopMarkers };
 
   render();
   clearTimeout(svTimer);

@@ -16,7 +16,8 @@ courses/<slug>/course.json     the course definition (you write this)
 courses/<slug>/course-data.js  generated route + turns (window.COURSE)
 courses/<slug>/<gpx>           generated GPX file
 tools/make_course.py           builds a course from course.json
-tools/check_site.mjs           acceptance check: node tools/check_site.mjs
+tools/check_route.py           offline route checker (spurs, tiny loops, stray U-turns)
+tools/check_site.mjs           acceptance check: node tools/check_site.mjs (also runs check_route.py)
 ```
 
 ## Add a course
@@ -41,6 +42,26 @@ tools/check_site.mjs           acceptance check: node tools/check_site.mjs
 | `difficulty` | no | Short text shown as a chip on the course list, for example `Easy, flat` |
 | `stops` | no | Labelled points on the map: `[label, lat, lon]` |
 | `roundabouts` | no | `[lat, lon]` of roundabouts, so turns there are described as roundabout moves |
+| `outAndBack` | no | `[lat, lon]` of intended turn-around points, where the route is meant to ride out and come back the same way (see Route checks) |
+
+## Route checks
+
+`python3 tools/check_route.py` reads each course's `course-data.js` (no network) and fails with `ROUTE CHECK FAILED` (exit 1) on routing accidents. It prints one line per finding with the km position, `lat,lon` and a Google Maps link, and ends with `ROUTE OK` when there are no errors. Pass `courses/<slug>/course.json` to check one course.
+
+| Rule | Level | Catches |
+|---|---|---|
+| `spur` | error | The route rides out and back along the same way (a dead-end detour of 10 m or more), found from the geometry, not from the turn list. Laps and the opposite carriageway are not spurs, only a reversal at a tip is |
+| `loop` | error | A tiny closed loop: the route returns within 8 m of a point it passed 30 to 250 m earlier |
+| `uturn-turn` | error | A U-turn instruction in `turns` that is not at an allowed spur or a roundabout |
+| `waypoint-off-route` | warn | A waypoint more than 15 m from the routed line (the router snapped it to another way) |
+| `outAndBack` | warn | A declared turn-around that matches no spur (stale) |
+
+A spur is allowed (printed as `ALLOWED`) when its tip is within 45 m of a `roundabouts` point or within 40 m of a point in the optional `outAndBack` list in `course.json`. Declare the point where you really turn around, for example `"outAndBack": [[-6.3363876, 106.6247291]]`. If a spur is unintended, move the waypoint onto the road instead.
+
+- `python3 tools/make_course.py courses/<slug>/course.json` runs the same check on the fresh route before it writes anything. On errors it prints them and exits 1 without writing. Add `--force` as a second argument to write anyway (the findings are still printed).
+- `python3 tools/check_route.py --selftest` runs synthetic cases (side spur, declared spur, repeated laps, out and back, tiny loop, far waypoint) and prints `SELFTEST OK`.
+- `node tools/check_site.mjs` also runs the route check and fails if it does.
+- In the browser, `window.__viewer.lineCheck()` returns `{ maxDevM, worstIndex }`: for every view point it measures how far the blue ridden line (its vertices and segment midpoints) is from the true route polyline. It should be below 1 m. It only reads; it does not move the map or the current position.
 
 ## Notes
 

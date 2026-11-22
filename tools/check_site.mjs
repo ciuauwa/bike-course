@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -94,6 +95,12 @@ checkHtml('viewer.html', ['turn-banner', 'tile.openstreetmap.org', 'server.arcgi
   'id="more"', 'id="morePanel"', 'id="legend"', 'id="stopsToggle"', 'id="stopsList"', '100dvh', 'safe-area-inset-bottom', 'viewport-fit=cover'],
   ['basemaps.cartocdn.com', 'src="course-data.js"']);
 
+// Route checks (offline): unintended spurs, tiny loops, stray U-turns. See tools/check_route.py.
+const routeCheck = spawnSync('python3', [path.join(root, 'tools', 'check_route.py')], { encoding: 'utf8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' } });
+const routeOut = ((routeCheck.stdout || '') + (routeCheck.stderr || '')).trim();
+if (routeCheck.error) err(`could not run python3 tools/check_route.py: ${routeCheck.error.message}`);
+else if (routeCheck.status !== 0) err(`route check failed (exit ${routeCheck.status}):\n${routeOut.split('\n').map((l) => '     ' + l).join('\n')}`);
+
 if (errors.length) {
   console.error('SITE CHECK FAILED');
   for (const e of errors) console.error(' - ' + e);
@@ -101,3 +108,4 @@ if (errors.length) {
 }
 console.log('SITE OK');
 for (const l of lines) console.log(l);
+console.log(routeOut);
