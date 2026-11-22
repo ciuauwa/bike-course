@@ -1,0 +1,23 @@
+# Test cases: Where am I
+
+Course used: `viewer.html?course=aeris-3-laps-lake` (19.9 km, 3 laps then the lake loop). Open the browser console for the `__viewer.locate` calls. `setFix(lat, lon, accuracyM)` turns Where am I on without asking the browser for your location and handles the point exactly like a real fix. "Info box" is `#locInfo` at the bottom left of the map.
+
+| ID | Steps | Expected |
+|---|---|---|
+| WA-01 on route | `__viewer.locate.setFix(-6.334505, 106.633787, 10)` | Button shows pressed (`aria-pressed="true"`). A green dot with a white border and a faint green circle appear. No dashed line. Info box: "You are on the route, at km X.XX of 19.90." The map zooms to the point once. |
+| WA-02 200 m off route | `__viewer.locate.setFix(-6.343404, 106.622585, 10)` (200 m north of a route vertex; another stretch of the route is nearer, about 140 m to the west, so expect about 140 m and "west" or "north-west") | A dashed green line joins the dot to the nearest route point. Info box: "You are N m from the route. Head <compass> to rejoin it at km X.XX." N is a multiple of 10 and below 1000, and the compass word matches the direction of the dashed line. The map fits both ends once (not above zoom 17). |
+| WA-03 far away | `__viewer.locate.setFix(-6.2, 106.8, 10)` | Info box gives the distance in kilometres with one decimal ("You are 23.1 km from the route. Head south-west ..."), plus a compass word. Dashed line runs to the nearest route point. Map shows both ends. |
+| WA-04 low accuracy | `__viewer.locate.setFix(-6.334505, 106.633787, 150)` | Info box ends with " GPS accuracy is low (±150 m)." The accuracy circle has a 150 m radius. With accuracy 100 or less the sentence is absent. |
+| WA-05 no re-fit | After WA-01, pan or zoom the map, then `__viewer.locate.setFix(-6.3346, 106.6338, 10)` | The dot moves and the text updates. The map does not move or zoom. |
+| WA-06 lap ambiguity | Run `__viewer.setIndex(0)`, then `__viewer.locate.nearest(-6.3345, 106.6340).alongM`; then `__viewer.setIndex(175)` (about km 7.0) and call `nearest` again with the same point | First call: `alongM` below 3400 (lap 1). Second call: `alongM` at or above 6950 (a later lap). The info box on `setFix` with the same point shows the matching km. |
+| WA-07 jump button | After WA-02 or WA-06 press "Show the next turn from here" | Viewer moves to the view point nearest the rider's km (slider, status bar and Street View change), the turn banner shows the next turn after that point, and the map pans there. The dot and info box stay (locating does not stop). |
+| WA-08 turning off | With Where am I on, tap the button again (or `__viewer.locate.stop()`) | `aria-pressed="false"`, dot, circle, dashed line and info box are gone. `__viewer.locate.isOn()` is `false`. |
+| WA-09 waiting for a fix | Tap Where am I on a device and allow location | Info box says "Finding your location…" until the first fix, then switches to the route text. |
+| WA-10 permission denied | Block location for the site, tap Where am I | Info box: "Location is blocked. Allow location for this site in your browser settings, then tap Where am I again." Button returns to off. Tapping again tries again. |
+| WA-11 unavailable or timeout | Turn GPS off or use a place with no signal, tap Where am I | Info box: "Could not get your location. Check that GPS is on and try again." Button returns to off. |
+| WA-12 not supported | Open over plain `http://` on a non-local host, or in a browser without geolocation | Info box: "This browser cannot share your location here." Button stays off. |
+| WA-13 nothing stored or sent | Use Where am I, then check Application storage and the Network tab | No new `localStorage` key holds a position and no request carries the coordinates (the existing `streetview.index.<slug>` key holds only the view-point index). |
+| WA-14 phone widths 360x640 | Open at 360x640 and at 390x844, press Where am I (and the Stops toggle) | The button is at least 44x44 px, sits below the zoom control, and overlaps neither the zoom control, the legend row nor the attribution. The info box stays left of the button and above the attribution. No horizontal scroll on the page. |
+| WA-15 landscape phone 844x390 | Open at 844x390, run WA-02 | Same as WA-14: no overlap, no horizontal scroll, the info box scrolls inside itself if the map is short. |
+| WA-16 desktop 1280x800 | Open at 1280x800, run WA-02 | Same placement as WA-14. The turn banner and legend are unchanged. |
+| WA-17 nothing else changed | Run `__viewer.lineCheck()` and use Play, Next turn, the More sheet and the Stops list | `maxDevM` is below 1. All controls behave as before. |

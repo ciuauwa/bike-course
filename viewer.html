@@ -84,6 +84,17 @@
   #turn-banner .tb-main { font-size:20px; font-weight:700; line-height:1.2; }
   #turn-banner .tb-text { font-size:18px; line-height:1.25; }
   #turn-banner .tb-then { font-size:13px; opacity:.85; margin-top:3px; }
+  /* Where am I: sits under the Leaflet zoom control (top-right); the info box is bottom-left, above the attribution. */
+  #locate { position:absolute; right:10px; top:88px; z-index:1000; width:44px; min-height:44px; padding:2px; font:inherit; font-size:12px; line-height:1.15;
+    font-weight:600; color:var(--fg); background:#fff; border:2px solid rgba(0,0,0,.2); border-radius:4px; background-clip:padding-box; cursor:pointer; }
+  #locate:hover { background:#f4f4f4; }
+  #locate[aria-pressed="true"] { background:#e6f4ea; border-color:#1a8f3c; color:#0f5c25; }
+  #locInfo { position:absolute; left:8px; bottom:28px; z-index:1001; max-width:calc(100% - 78px); max-width:min(340px, calc(100% - 78px));
+    max-height:calc(100% - 100px); overflow-y:auto; padding:6px 10px; background:rgba(255,255,255,.97); border-radius:6px;
+    font-size:13px; line-height:1.35; color:var(--fg); box-shadow:0 1px 4px rgba(0,0,0,.25); overflow-wrap:anywhere; }
+  #locInfo[hidden], #locJump[hidden] { display:none; }
+  #locJump { display:block; margin-top:6px; font:inherit; font-size:13px; padding:6px 10px; min-height:36px; border:1px solid var(--line); background:#fff; border-radius:5px; cursor:pointer; }
+  #locJump:hover { background:#eef0f2; }
   .turn-wrap { background:none; border:0; }
   /* Zoomed out, turn markers would cover the route: show only the next turn until the map is zoomed in. */
   .turns-far .turn-dot:not(.next) { display:none; }
@@ -141,6 +152,7 @@
     #morePanel #note { padding:4px 0; border:0; }
     #stopsToggle { min-height:28px; padding:4px 10px; }
     #stopsList li { padding:3px 0; }
+    #locJump { min-height:44px; }
   }
   /* Landscape phone: panes side by side, dock in one compact row. */
   @media (max-height:480px) and (orientation:landscape) {
@@ -190,6 +202,11 @@
           <button id="stopsToggle" type="button" aria-expanded="false" aria-controls="stopsList">Stops <span class="caret" aria-hidden="true">&#9662;</span></button>
         </div>
         <ol id="stopsList" hidden></ol>
+      </div>
+      <button id="locate" type="button" aria-pressed="false" title="Show where you are on the course">Where am I</button>
+      <div id="locInfo" role="status" aria-live="polite" hidden>
+        <span id="locText"></span>
+        <button id="locJump" type="button" hidden>Show the next turn from here</button>
       </div>
     </div>
   </div>
@@ -660,7 +677,131 @@ function boot(C, slug) {
   });
   window.addEventListener('resize', function () { map.invalidateSize(); refreshMap(); });
 
-  window.__viewer = { course: slug, points: points, getIndex: function () { return index; }, setIndex: setIndex, lineCheck: lineCheck, turns: turns, nextTurn: nextTurn, stopMarkers: stopMarkers };
+  // ---- where am I ----
+  // The position is only used in this page: it is never stored and never sent anywhere.
+  // BEGIN nearest-pure
+  // Nearest point on the true course polyline (point to segment, not just vertices). The same road is ridden several
+  // times, so among the segments within NEAR_TIE_M of the closest one, take the first whose along-course distance is
+  // at least curD - LAP_SLACK_M; if none, the earliest of them.
+  var NEAR_TIE_M = 15, LAP_SLACK_M = 50;
+  function nearestOnCourse(lat, lon, curD) {
+    var kY = 111194.9, kX = kY * Math.cos(lat * rad), n = course.length - 1, s, best = Infinity;
+    var dArr = new Array(n), tArr = new Array(n);
+    for (s = 0; s < n; s++) {
+      var ax = (course[s][1] - lon) * kX, ay = (course[s][0] - lat) * kY;
+      var dx = (course[s + 1][1] - lon) * kX - ax, dy = (course[s + 1][0] - lat) * kY - ay;
+      var L2 = dx * dx + dy * dy;
+      var t = L2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L2)) : 0;
+      var ex = ax + t * dx, ey = ay + t * dy;
+      dArr[s] = Math.sqrt(ex * ex + ey * ey); tArr[s] = t;
+      if (dArr[s] < best) best = dArr[s];
+    }
+    var pick = -1, first = -1;
+    for (s = 0; s < n; s++) {
+      if (dArr[s] > best + NEAR_TIE_M) continue;
+      if (first < 0) first = s;
+      if (cum[s] + tArr[s] * (cum[s + 1] - cum[s]) >= curD - LAP_SLACK_M) { pick = s; break; }
+    }
+    if (pick < 0) pick = first;
+    var pt = [course[pick][0] + (course[pick + 1][0] - course[pick][0]) * tArr[pick],
+              course[pick][1] + (course[pick + 1][1] - course[pick][1]) * tArr[pick]];
+    return { distM: hav([lat, lon], pt), alongM: cum[pick] + tArr[pick] * (cum[pick + 1] - cum[pick]),
+             lat: pt[0], lon: pt[1], bearing: bearing([lat, lon], pt) };
+  }
+  // END nearest-pure
+
+  var ON_ROUTE_M = 30, LOW_ACC_M = 100, LOC_GREEN = '#1a8f3c';
+  var COMPASS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+  var MSG_BLOCKED = 'Location is blocked. Allow location for this site in your browser settings, then tap Where am I again.';
+  var MSG_FAILED = 'Could not get your location. Check that GPS is on and try again.';
+  var MSG_NOGEO = 'This browser cannot share your location here.';
+  var locBtn = $('locate'), locInfo = $('locInfo'), locText = $('locText'), locJump = $('locJump');
+  var locOn = false, locWatch = null, locFirst = true, locLast = null, locShown = null;
+  var locDot = null, locCircle = null, locLine = null;
+  L.DomEvent.disableClickPropagation(locBtn);
+  L.DomEvent.disableClickPropagation(locInfo);
+  L.DomEvent.disableScrollPropagation(locInfo);
+
+  function compassName(b) { return COMPASS[Math.round((((b % 360) + 360) % 360) / 45) % 8]; }
+  function fmtDistance(m) { var r = Math.round(m / 10) * 10; return r >= 1000 ? (m / 1000).toFixed(1) + ' km' : r + ' m'; }
+  function locSay(msg, withJump) {
+    if (msg !== locShown) { locText.textContent = msg; locShown = msg; } // same text again: do not re-announce
+    locJump.hidden = !withJump;
+    locInfo.hidden = false;
+  }
+  function locClearLayers() {
+    [locDot, locCircle, locLine].forEach(function (l) { if (l) map.removeLayer(l); });
+    locDot = locCircle = locLine = null;
+  }
+  function locStop() {
+    if (locWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(locWatch);
+    locWatch = null; locOn = false; locLast = null; locShown = null;
+    locClearLayers();
+    locBtn.setAttribute('aria-pressed', 'false');
+    locInfo.hidden = true; locJump.hidden = true; locText.textContent = '';
+  }
+  function locFail(msg) { locStop(); locSay(msg, false); }
+  function locBegin() {
+    locOn = true; locFirst = true; locLast = null;
+    locBtn.setAttribute('aria-pressed', 'true');
+    locSay('Finding your location…', false);
+  }
+  function locOnFix(lat, lon, acc) {
+    if (!isFinite(lat) || !isFinite(lon)) return;
+    acc = isFinite(acc) && acc > 0 ? acc : 0;
+    var r = nearestOnCourse(lat, lon, points[index]._d), fix = [lat, lon], np = [r.lat, r.lon];
+    locLast = r;
+    if (!locCircle) locCircle = L.circle(fix, { radius: acc, color: LOC_GREEN, weight: 1, opacity: 0.6, fillColor: LOC_GREEN, fillOpacity: 0.12, interactive: false }).addTo(map);
+    else { locCircle.setLatLng(fix); locCircle.setRadius(acc); }
+    var off = r.distM > ON_ROUTE_M;
+    if (off) {
+      if (!locLine) locLine = L.polyline([fix, np], { color: LOC_GREEN, weight: 3, opacity: 0.9, dashArray: '6 8', interactive: false }).addTo(map);
+      else locLine.setLatLngs([fix, np]);
+    } else if (locLine) { map.removeLayer(locLine); locLine = null; }
+    if (!locDot) locDot = L.circleMarker(fix, { radius: 8, color: '#fff', weight: 3, opacity: 1, fillColor: LOC_GREEN, fillOpacity: 1, interactive: false }).addTo(map);
+    else locDot.setLatLng(fix);
+    locDot.bringToFront();
+    var km = 'km ' + (r.alongM / 1000).toFixed(2), msg;
+    if (!off) msg = 'You are on the route, at ' + km + ' of ' + (total / 1000).toFixed(2) + '.';
+    else msg = 'You are ' + fmtDistance(r.distM) + ' from the route. Head ' + compassName(r.bearing) + ' to rejoin it at ' + km + '.';
+    if (acc > LOW_ACC_M) msg += ' GPS accuracy is low (±' + Math.round(acc) + ' m).';
+    locSay(msg, true);
+    if (locFirst) { // fit once; later fixes never move the map
+      locFirst = false;
+      map.fitBounds(L.latLngBounds([fix, np]), { padding: [50, 50], maxZoom: 17 });
+    }
+  }
+  function locStart() {
+    if (!navigator.geolocation || window.isSecureContext === false) { locFail(MSG_NOGEO); return; }
+    locBegin();
+    try {
+      locWatch = navigator.geolocation.watchPosition(function (pos) {
+        if (locOn) locOnFix(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+      }, function (err) {
+        if (locOn) locFail(err && err.code === 1 ? MSG_BLOCKED : MSG_FAILED);
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+    } catch (e) { locFail(MSG_NOGEO); }
+  }
+  function nearestViewIdx(d) {
+    var best = 0, bd = Infinity;
+    for (var i = 0; i < points.length; i++) { var dd = Math.abs(points[i]._d - d); if (dd < bd) { bd = dd; best = i; } }
+    return best;
+  }
+  locBtn.addEventListener('click', function () { if (locOn) locStop(); else locStart(); });
+  locJump.addEventListener('click', function () {
+    if (!locLast) return;
+    var i = nearestViewIdx(locLast.alongM);
+    setIndex(i);
+    map.panTo([points[i].lat, points[i].lon]);
+  });
+  var locate = {
+    nearest: function (lat, lon) { return nearestOnCourse(lat, lon, points[index]._d); },
+    setFix: function (lat, lon, accuracyM) { if (!locOn) locBegin(); locOnFix(Number(lat), Number(lon), Number(accuracyM)); },
+    stop: locStop,
+    isOn: function () { return locOn; }
+  };
+
+  window.__viewer = { course: slug, points: points, getIndex: function () { return index; }, setIndex: setIndex, lineCheck: lineCheck, turns: turns, nextTurn: nextTurn, stopMarkers: stopMarkers, locate: locate };
 
   render();
   clearTimeout(svTimer);

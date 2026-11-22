@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-11-22: Street View viewer has a Where am I button on the map: it shows your position, how far you are from the route and which way to head to rejoin it, and can jump the viewer to your next turn. The position stays in the browser.
 - 2026-11-22: Route checker (tools/check_route.py) catches unintended spurs, tiny loops and stray U-turns, and make_course.py refuses to write a course that fails it. Fixed the stray 44 m dead-end detour at the Lapangan stop (course is now 19.9 km), and the blue ridden line on the map now follows the road instead of cutting corners.
 - 2026-11-20: Course list cards show a route map thumbnail, distance, climb, ride time, turns, surface, difficulty, route breakdown and stops.
 - 2026-11-20: Favicon and link-preview (WhatsApp) title, description and image. Regenerate the images with tools/make_share_assets.py (needs Pillow).

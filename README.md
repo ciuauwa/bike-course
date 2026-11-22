@@ -63,6 +63,15 @@ A spur is allowed (printed as `ALLOWED`) when its tip is within 45 m of a `round
 - `node tools/check_site.mjs` also runs the route check and fails if it does.
 - In the browser, `window.__viewer.lineCheck()` returns `{ maxDevM, worstIndex }`: for every view point it measures how far the blue ridden line (its vertices and segment midpoints) is from the true route polyline. It should be below 1 m. It only reads; it does not move the map or the current position.
 
+## Where am I
+
+The viewer has a **Where am I** button on the map, under the zoom control. Tap it to follow your position: a green dot (with a translucent circle for the GPS accuracy) shows where you are, and the box at the bottom left of the map says how far you are from the route. On the route it reads "You are on the route, at km X of Y". More than 30 m off, it says how far, which compass direction to head to rejoin, and draws a dashed green line to the nearest point on the route. The first fix zooms the map to show you and that point; later fixes never move the map. "Show the next turn from here" moves the viewer to the point on the route nearest you, so the turn strip shows your real next turn. Tap the button again to stop.
+
+- It needs HTTPS (or `localhost` / `file://`) and a GPS or network fix. Indoors or on a desktop the fix can be tens or hundreds of metres out; the box warns when accuracy is worse than 100 m.
+- The route passes the same road on every lap. When more than one lap is about equally close, it picks the first one at or after where the viewer is now (with 50 m of slack), otherwise the earliest.
+- Your position stays in the browser. It is not stored (no localStorage) and not sent anywhere.
+- Test hook in the browser console: `window.__viewer.locate` has `nearest(lat, lon)` (returns `{ distM, alongM, lat, lon, bearing }` using the viewer's current distance for the lap choice), `setFix(lat, lon, accuracyM)` (turns Where am I on without asking the browser for location and handles the point as a real fix), `stop()` and `isOn()`. Test cases are in `docs/testcases/where-am-i.md`.
+
 ## Notes
 
 - Turn directions are computed from the route geometry (bearing changes along the line), not from map instructions, so check them on a new course.
