@@ -891,7 +891,7 @@ function boot(C, slug) {
       msg = 'You are ' + fmtDistance(r.distM) + ' from the route. Head ' + compassName(r.bearing) + ' to rejoin it at ' + km + '.';
       if (locRoadFailed) msg += ' (road route unavailable)';
     }
-    if (locAcc > LOW_ACC_M) msg += ' GPS accuracy is low (±' + Math.round(locAcc) + ' m).';
+    if (locAcc > LOW_ACC_M) msg += ' GPS ±' + Math.round(locAcc) + ' m.';
     locSay(msg, jump);
     locSyncBtn();
   }
