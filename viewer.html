@@ -75,7 +75,8 @@
   .stop-label { background:#fff; border:1px solid #888; border-radius:3px; padding:1px 4px; font-size:11px; white-space:nowrap; box-shadow:none; }
   .stop-label:before { display:none; }
   .cur-wrap { background:none; border:0; }
-  #turn-banner { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:5; pointer-events:none;
+  #turn-banner { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:5; cursor:pointer;
+    -webkit-tap-highlight-color:transparent; touch-action:manipulation;
     display:none; align-items:center; gap:12px; padding:8px 16px; border-radius:10px; max-width:calc(100% - 340px); min-width:200px;
     background:rgba(20,24,28,.78); color:#fff; box-shadow:0 2px 10px rgba(0,0,0,.4); }
   #turn-banner[data-state="ahead"], #turn-banner[data-state="now"] { display:flex; }
@@ -84,6 +85,38 @@
   #turn-banner .tb-main { font-size:20px; font-weight:700; line-height:1.2; }
   #turn-banner .tb-text { font-size:18px; line-height:1.25; }
   #turn-banner .tb-then { font-size:13px; opacity:.85; margin-top:3px; }
+  #turn-banner:focus-visible { outline:3px solid #4da3ff; outline-offset:2px; }
+  /* Header status line: a button that opens the Course outline. */
+  #outlineToggle { font:inherit; color:inherit; background:none; border:0; padding:0; margin:0; text-align:left; cursor:pointer;
+    display:inline-flex; align-items:center; gap:4px; max-width:100%; -webkit-tap-highlight-color:transparent; }
+  #outlineText { display:flex; flex-wrap:wrap; gap:4px 16px; align-items:center; min-width:0; }
+  #outlineToggle .ol-caret { flex:none; font-size:10px; }
+  #outlineToggle:hover .ol-caret, #outlineToggle[aria-expanded="true"] .ol-caret { color:var(--fg); }
+  #outlineToggle:focus-visible { outline:3px solid #1e6fd9; outline-offset:2px; border-radius:3px; }
+  /* Course outline: a panel over the panes (desktop: 380 px, top left under the status row; phone: the whole pane area). */
+  #panes { position:relative; }
+  #outline { position:absolute; left:0; top:0; z-index:30; width:380px; max-width:100%; max-height:70vh; display:flex; flex-direction:column;
+    background:#fff; color:var(--fg); border:1px solid var(--line); border-top:0; border-radius:0 0 8px 0; box-shadow:0 6px 18px rgba(0,0,0,.25); }
+  #outline[hidden] { display:none; }
+  #outline:not([hidden]) { animation:outlineIn .18s ease-out; }
+  @keyframes outlineIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce) { #outline:not([hidden]) { animation:none; } }
+  .ol-top { flex:none; display:flex; align-items:center; justify-content:space-between; padding:0 4px 0 14px; border-bottom:1px solid var(--line); }
+  .ol-top h2 { margin:0; font-size:16px; }
+  #outlineClose { font:inherit; width:36px; height:36px; padding:0; font-size:24px; line-height:1; color:var(--fg); background:#fff; border:1px solid var(--line); border-radius:5px; cursor:pointer; margin:4px 0; }
+  #outlineClose:hover { background:#eef0f2; }
+  #outlineList { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; list-style:none; margin:0; padding:0; }
+  #outlineList ol { list-style:none; margin:0; padding:0; }
+  .ol-sec, .ol-turn { font:inherit; color:inherit; text-align:left; cursor:pointer; margin:0; border:0; border-radius:0; width:100%; display:flex; align-items:center; gap:10px;
+    -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+  #outlineList button:focus-visible, #outlineClose:focus-visible { outline:3px solid #1e6fd9; outline-offset:-3px; }
+  .ol-sec { position:sticky; top:0; z-index:1; min-height:36px; padding:4px 14px; background:#eef0f2; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; justify-content:space-between; }
+  .ol-turn { min-height:40px; padding:4px 14px; background:#fff; border-bottom:1px solid #eceef0; font-size:14px; line-height:1.3; }
+  .ol-turn:hover, .ol-sec:hover { background:#f4f6f8; }
+  .ol-turn[aria-current="true"] { background:#fff1c9; box-shadow:inset 4px 0 0 #ffb300; font-weight:600; }
+  .ol-arrow { flex:none; width:24px; text-align:center; font-size:20px; line-height:1; }
+  .ol-text { flex:1 1 0; min-width:0; overflow-wrap:anywhere; }
+  .ol-km { flex:none; font-size:12.5px; color:var(--muted); font-weight:400; font-variant-numeric:tabular-nums; white-space:nowrap; }
   /* Where am I: an icon button under the Leaflet zoom control (top-right); the info box is bottom-left, above the attribution. */
   #locate { position:absolute; right:10px; top:85px; z-index:1000; width:34px; height:34px; padding:0; margin:0; display:flex; align-items:center; justify-content:center;
     color:#1d2329; background:#fff; border:2px solid rgba(0,0,0,.2); border-radius:4px; background-clip:padding-box; cursor:pointer; }
@@ -122,16 +155,26 @@
     #back { flex:none; display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; font-size:26px; line-height:1; text-decoration:none; }
     #titleBlock { display:block; flex:1 1 auto; min-width:0; }
     #head h1 { font-size:16px; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    #status { display:block; padding:0; border:0; background:none; font-size:12.5px; line-height:1.3;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    #status > * { margin-right:10px; }
+    /* The status line is a 44 px tall button. Its padding reaches up over the title and 2 px below the text, with matching negative margins, so the header does not grow. */
+    #status { display:flow-root; padding:0; border:0; background:none; font-size:12.5px; line-height:1.3; white-space:nowrap; }
+    #status #outlineToggle { display:flex; width:100%; min-height:44px; margin:-26px 0 -2px; padding:26px 0 2px; gap:2px; }
+    #outlineText { display:block; flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #outlineText > * { margin-right:10px; }
     #sIdx { display:none; }
+    /* Course outline sheet: covers the Street View and map, the dock stays visible. */
+    #outline { inset:0; width:auto; max-width:none; max-height:none; border:0; border-radius:0; box-shadow:none; }
+    .ol-top { padding:0 4px 0 14px; }
+    #outlineClose { width:44px; height:44px; margin:0; }
+    .ol-sec { min-height:40px; }
+    .ol-turn { min-height:48px; padding:6px 14px; font-size:15px; }
     #panes { flex:1 1 0; flex-direction:column; }
     #svPane { flex:4 1 0; }
     #mapPane { flex:5 1 0; border-left:0; border-top:1px solid var(--line); }
     /* Turn strip: a normal-flow band directly under the Street View, never over the image. */
     #turn-banner { position:static; top:auto; left:auto; transform:none; flex:none; width:100%; max-width:none; min-width:0;
       min-height:52px; padding:4px 12px; gap:10px; border-radius:0; box-shadow:none; background:#14181c; }
+    #turn-banner:focus-visible { outline-offset:-3px; }
+    #turn-banner::after { content:"\203A"; flex:none; margin-left:auto; padding-left:4px; font-size:34px; line-height:1; opacity:.75; }
     #turn-banner[data-state="now"] { background:#ffb300; color:#1d2329; }
     #turn-banner .tb-arrow { font-size:30px; min-width:34px; }
     #turn-banner > div:last-child { flex:1 1 0; min-width:0; display:flex; flex-wrap:wrap; align-items:baseline; gap:0 8px; }
@@ -172,7 +215,7 @@
   }
   /* Landscape phone: panes side by side, dock in one compact row. */
   @media (max-height:480px) and (orientation:landscape) {
-    #head { min-height:44px; padding:0 max(10px, env(safe-area-inset-right)) 0 max(4px, env(safe-area-inset-left)); }
+    #head { min-height:48px; padding:0 max(10px, env(safe-area-inset-right)) 0 max(4px, env(safe-area-inset-left)); }
     #panes { flex-direction:row; }
     #svPane { flex:1 1 0; }
     #mapPane { flex:1 1 0; border-top:0; border-left:1px solid var(--line); }
@@ -195,10 +238,15 @@
     <div id="titleBlock">
       <h1 id="courseName"></h1>
       <div id="status">
-        <strong id="sSection"></strong>
-        <span id="sKm"></span>
-        <span id="sIdx"></span>
-        <span id="sTurn"></span>
+        <button id="outlineToggle" type="button" aria-expanded="false" aria-controls="outline" aria-haspopup="dialog" title="Course outline">
+          <span id="outlineText">
+            <strong id="sSection"></strong>
+            <span id="sKm"></span>
+            <span id="sIdx"></span>
+            <span id="sTurn"></span>
+          </span>
+          <span class="ol-caret" aria-hidden="true">&#9662;</span>
+        </button>
       </div>
     </div>
   </div>
@@ -207,7 +255,7 @@
       <div id="svWrap">
         <iframe id="sv" title="Google Street View" allow="accelerometer; gyroscope" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
       </div>
-      <div id="turn-banner" data-state="none" aria-live="polite"></div>
+      <div id="turn-banner" role="button" tabindex="0" data-state="none" aria-live="polite"></div>
     </div>
     <div id="mapPane">
       <div id="map"></div>
@@ -227,6 +275,13 @@
           <button id="locClose" type="button" aria-label="Turn off location" title="Turn off location">&times;</button>
         </div>
       </div>
+    </div>
+    <div id="outline" role="dialog" aria-label="Course outline" hidden>
+      <div class="ol-top">
+        <h2>Course outline</h2>
+        <button id="outlineClose" type="button" aria-label="Close outline">&times;</button>
+      </div>
+      <ol id="outlineList"></ol>
     </div>
   </div>
   <div id="bar">
@@ -506,6 +561,25 @@ function boot(C, slug) {
     for (var i = 0; i < points.length; i++) { if (points[i]._d <= lim) best = i; else break; }
     return best;
   }
+  // BEGIN outline-pure
+  // Which view point to show for a turn at distance d. outlineIdxFor: the last view point at or before d - 20 m (0 if none),
+  // so the rider sees the junction just before it. bannerIdxFor adds two rules for the turn banner: it never goes backwards
+  // (if that point is not ahead of the current index cur, use the first view point at or after d), and a tap always moves
+  // forward (if even that is not ahead of cur, step one view point on, clamped to the last).
+  function outlineIdxFor(pts, d) {
+    var best = 0, lim = d - 20;
+    for (var i = 0; i < pts.length; i++) { if (pts[i]._d <= lim) best = i; else break; }
+    return best;
+  }
+  function bannerIdxFor(pts, d, cur) {
+    var i = outlineIdxFor(pts, d);
+    if (i > cur) return i;
+    var j = pts.length - 1;
+    for (var k = 0; k < pts.length; k++) { if (pts[k]._d >= d) { j = k; break; } }
+    if (j <= cur) j = Math.min(pts.length - 1, cur + 1);
+    return j;
+  }
+  // END outline-pure
   function nextTurn() {
     if (!turns.length) return null;
     var dist = points[index]._d, i = turnIdxFor(dist);
@@ -545,7 +619,8 @@ function boot(C, slug) {
     var nt = nextTurn();
     $('sTurn').textContent = 'turn ' + (nt ? nt.index + 1 : turns.length) + ' / ' + turns.length;
     setLit(nt ? nt.index : -1);
-    if (!nt) { banner.setAttribute('data-state', 'none'); banner.innerHTML = ''; return; }
+    outlineMark(nt ? nt.index : -1);
+    if (!nt) { banner.setAttribute('data-state', 'none'); banner.innerHTML = ''; banner.removeAttribute('aria-label'); return; }
     var t = nt.turn, state = nt.distance <= 30 ? 'now' : 'ahead';
     var then = '', after = turns[nt.index + 1];
     if (after && after.d - t.d <= 150) {
@@ -555,7 +630,18 @@ function boot(C, slug) {
       '<div class="tb-main">' + (state === 'now' ? 'NOW' : fmtAhead(nt.distance)) + '</div>' +
       '<div class="tb-text">' + esc(t.text) + '</div>' + then + '</div>';
     banner.setAttribute('data-state', state);
+    banner.setAttribute('aria-label', 'Go to next turn: ' + t.text);
   }
+  // Tapping the banner goes to the turn it shows. While playing, playback carries on from the new index.
+  function goBannerTurn() {
+    var nt = nextTurn();
+    if (nt) setIndex(bannerIdxFor(points, nt.turn.d, index));
+  }
+  $('turn-banner').addEventListener('click', goBannerTurn);
+  $('turn-banner').addEventListener('keydown', function (ev) {
+    if (ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    if (ev.key === 'Enter' || ev.key === ' ' || ev.code === 'Space') { ev.preventDefault(); ev.stopPropagation(); goBannerTurn(); }
+  });
   function jumpNextTurn() {
     var dist = points[index]._d;
     for (var i = 0; i < turns.length; i++) { var vi = viewIdxBefore(turns[i].d); if (vi > index) { setIndex(vi); return; } }
@@ -674,6 +760,7 @@ function boot(C, slug) {
   var appEl = $('app'), moreBtn = $('more');
   function refreshMap() { setTimeout(function () { map.invalidateSize(); }, 60); }
   function setMore(open) {
+    if (open && outlineIsOpen) closeOutline(false);
     appEl.classList.toggle('more-open', open);
     moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
     refreshMap();
@@ -681,16 +768,80 @@ function boot(C, slug) {
   moreBtn.addEventListener('click', function () { setMore(!appEl.classList.contains('more-open')); });
   window.addEventListener('orientationchange', refreshMap);
 
+  // ---- Course outline: every turn in ride order, grouped by piece (Lap 1 of 3, ... Lake loop) ----
+  var outlineEl = $('outline'), outlineBtn = $('outlineToggle'), outlineCloseBtn = $('outlineClose'), outlineList = $('outlineList');
+  var outlineTurnBtns = [], outlineMarked = -1;
+  function pieceOfD(d) { // the same rule as sectionAt, as a piece number
+    for (var p = 0; p < pieceEndDist.length; p++) if (d <= pieceEndDist[p] + 0.5) return p;
+    return pieceEndDist.length - 1;
+  }
+  function pieceStartIdx(p) { // first view point of piece p (the same one the More sheet jump buttons use)
+    if (p <= 0) return 0;
+    var lim = pieceEndDist[p - 1] + 0.5;
+    for (var i = 0; i < points.length; i++) if (points[i]._d > lim) return i;
+    return points.length - 1;
+  }
+  function outlineSpan(cls, text) { var e = document.createElement('span'); e.className = cls; e.textContent = text; return e; }
+  (function buildOutline() {
+    var turnLists = [];
+    pieceNames.forEach(function (name, p) {
+      var li = document.createElement('li'), sec = document.createElement('button'), ol = document.createElement('ol');
+      li.className = 'ol-piece';
+      sec.type = 'button'; sec.className = 'ol-sec';
+      sec.appendChild(outlineSpan('ol-name', name));
+      sec.appendChild(outlineSpan('ol-km', 'km ' + ((p ? pieceEndDist[p - 1] : 0) / 1000).toFixed(2)));
+      sec.addEventListener('click', function () { setIndex(pieceStartIdx(p)); closeOutline(true); });
+      li.appendChild(sec); li.appendChild(ol); outlineList.appendChild(li);
+      turnLists.push(ol);
+    });
+    turns.forEach(function (t, i) {
+      var li = document.createElement('li'), b = document.createElement('button'), g = outlineSpan('ol-arrow', glyph(t.type));
+      g.setAttribute('aria-hidden', 'true');
+      b.type = 'button'; b.className = 'ol-turn';
+      b.appendChild(g); b.appendChild(outlineSpan('ol-text', String(t.text))); b.appendChild(outlineSpan('ol-km', 'km ' + (t.d / 1000).toFixed(2)));
+      b.addEventListener('click', function () { setIndex(outlineIdxFor(points, t.d)); closeOutline(true); });
+      li.appendChild(b); turnLists[pieceOfD(t.d)].appendChild(li);
+      outlineTurnBtns.push(b);
+    });
+  })();
+  function outlineMark(ni) { // highlight the row of the current next turn
+    if (outlineMarked === ni) return;
+    if (outlineMarked >= 0 && outlineTurnBtns[outlineMarked]) outlineTurnBtns[outlineMarked].removeAttribute('aria-current');
+    outlineMarked = ni;
+    if (ni >= 0 && outlineTurnBtns[ni]) outlineTurnBtns[ni].setAttribute('aria-current', 'true');
+  }
+  var outlineIsOpen = false;
+  function openOutline() {
+    if (outlineIsOpen) return;
+    setMore(false);
+    outlineIsOpen = true;
+    outlineEl.hidden = false;
+    outlineBtn.setAttribute('aria-expanded', 'true');
+    var cur = outlineMarked >= 0 ? outlineTurnBtns[outlineMarked] : null;
+    if (cur) { try { cur.scrollIntoView({ block: 'center' }); } catch (e) { cur.scrollIntoView(); } } else outlineList.scrollTop = 0;
+    try { outlineCloseBtn.focus({ preventScroll: true }); } catch (e) { outlineCloseBtn.focus(); }
+  }
+  function closeOutline(refocus) {
+    if (!outlineIsOpen) return;
+    outlineIsOpen = false;
+    outlineEl.hidden = true;
+    outlineBtn.setAttribute('aria-expanded', 'false');
+    if (refocus) { try { outlineBtn.focus({ preventScroll: true }); } catch (e) { outlineBtn.focus(); } }
+  }
+  outlineBtn.addEventListener('click', function () { if (outlineIsOpen) closeOutline(true); else openOutline(); });
+  outlineCloseBtn.addEventListener('click', function () { closeOutline(true); });
+
   document.addEventListener('keydown', function (ev) {
     if (ev.altKey || ev.ctrlKey || ev.metaKey) return;
     var t = ev.target, tag = t && t.tagName;
-    if (ev.key === 'Escape') { if (appEl.classList.contains('more-open')) setMore(false); }
+    if (outlineIsOpen && ev.key !== 'Escape') return; // arrows and Space belong to the outline list while it is open
+    if (ev.key === 'Escape') { if (outlineIsOpen) closeOutline(true); else if (appEl.classList.contains('more-open')) setMore(false); }
     else if (ev.key === 'ArrowLeft') { ev.preventDefault(); setIndex(index - 1); }
     else if (ev.key === 'ArrowRight') { ev.preventDefault(); setIndex(index + 1); }
     else if (ev.key === 'ArrowUp') { ev.preventDefault(); jumpNextTurn(); }
     else if (ev.key === 'ArrowDown') { ev.preventDefault(); jumpPrevTurn(); }
     else if (ev.key === ' ' || ev.code === 'Space') {
-      if (tag === 'BUTTON' || tag === 'SELECT' || tag === 'A') return; // let focused controls act on Space
+      if (tag === 'BUTTON' || tag === 'SELECT' || tag === 'A' || (t && t.getAttribute && t.getAttribute('role') === 'button')) return; // let focused controls act on Space
       ev.preventDefault(); toggle();
     }
   });
@@ -960,7 +1111,8 @@ function boot(C, slug) {
     }
   };
 
-  window.__viewer = { course: slug, points: points, getIndex: function () { return index; }, setIndex: setIndex, lineCheck: lineCheck, turns: turns, nextTurn: nextTurn, stopMarkers: stopMarkers, locate: locate };
+  window.__viewer = { course: slug, points: points, getIndex: function () { return index; }, setIndex: setIndex, lineCheck: lineCheck, turns: turns, nextTurn: nextTurn, stopMarkers: stopMarkers, locate: locate,
+    outline: { open: openOutline, close: function () { closeOutline(true); }, isOpen: function () { return outlineIsOpen; }, rows: function () { return outlineTurnBtns.length; } } };
 
   render();
   clearTimeout(svTimer);

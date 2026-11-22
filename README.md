@@ -4,6 +4,8 @@ A plain static site (no framework, no build step) for riding bike courses virtua
 
 On a phone the viewer fits the screen without scrolling: Street View on top, the turn instruction as a strip directly under the image (never over it), the map below, and the controls in a dock at the bottom within thumb reach. Speed, section jumps, the Google Maps link, the GPX link and the blank-view note sit behind the "More" button, which opens a sheet above the dock. On a desktop-width window the controls stay in the top bar and the turn banner sits over the Street View.
 
+The turn banner is a button: tap or click it (or press Enter or Space) to jump to the turn it shows, and playback carries on from there. The header status line opens the **Course outline** (a sheet on phones, a 380 px panel on desktop) that lists every turn by lap, where tapping a turn or a lap header jumps there; test cases are in `docs/testcases/course-outline.md`.
+
 The course list shows each course as a card with a small map of the route (stops as numbered dots), distance, climb, ride time at 15 km/h, turn count, the surface and difficulty chips, the route sections and the stops. All of it comes from `courses/index.js` (`window.COURSES`), which `tools/make_course.py` regenerates from every course folder. Each entry has `slug`, `name`, `description`, `km`, `gpx`, `ascentM` (total climb in metres, from BRouter's "filtered ascend"), `turns`, `stops`, `sections` (`{label, repeat, km}`, with km for one repetition), `preview` (the outline as simplified `[lat, lon]` points, at most 250) and the optional `surface` and `difficulty`.
 
 ## Layout
