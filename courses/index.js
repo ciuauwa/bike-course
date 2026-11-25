@@ -512,14 +512,19 @@ window.COURSES = [
   {
     "slug": "citragarden-3-laps-danau-abah",
     "name": "CitraGarden 3 Laps + Danau Abah",
-    "description": "Three end-to-end laps of Jalan CitraGarden Serpong, from the turning circle by Kuburan Cina to the Patung Kuda gate and back, then south to Danau Abah and back past the Warung Kelambu rest stop. Mostly paved, flat.",
-    "km": 16.6,
+    "description": "Three end-to-end laps of Jalan CitraGarden Serpong from the roundabout: down to the turning circle by Kuburan Cina, up to the Patung Kuda gate and back. Then south to Danau Abah and home past the Warung Kelambu rest stop. Mostly paved, flat.",
+    "km": 19.6,
     "gpx": "courses/citragarden-3-laps-danau-abah/citragarden-3-laps-danau-abah.gpx",
-    "ascentM": 7,
-    "turns": 31,
+    "ascentM": 27,
+    "turns": 36,
     "stops": [
       [
-        "Kuburan Cina turning circle (start/finish)",
+        "Roundabout (start/finish)",
+        -6.329311,
+        106.63671
+      ],
+      [
+        "Kuburan Cina turning circle",
         -6.34162,
         106.63225
       ],
@@ -543,18 +548,78 @@ window.COURSES = [
       {
         "label": "Lap",
         "repeat": 3,
-        "km": 3.7
+        "km": 3.9
       },
       {
         "label": "Danau Abah loop",
         "repeat": 1,
-        "km": 5.5
+        "km": 8.1
       }
     ],
     "preview": [
       [
-        -6.34162,
-        106.63225
+        -6.32931,
+        106.63671
+      ],
+      [
+        -6.32942,
+        106.63691
+      ],
+      [
+        -6.32957,
+        106.63694
+      ],
+      [
+        -6.3299,
+        106.63666
+      ],
+      [
+        -6.33125,
+        106.63607
+      ],
+      [
+        -6.33198,
+        106.63551
+      ],
+      [
+        -6.33265,
+        106.63471
+      ],
+      [
+        -6.33321,
+        106.63424
+      ],
+      [
+        -6.33451,
+        106.63379
+      ],
+      [
+        -6.33611,
+        106.63281
+      ],
+      [
+        -6.33918,
+        106.63141
+      ],
+      [
+        -6.33971,
+        106.63132
+      ],
+      [
+        -6.34073,
+        106.63214
+      ],
+      [
+        -6.34134,
+        106.63237
+      ],
+      [
+        -6.34163,
+        106.63232
+      ],
+      [
+        -6.3416,
+        106.63215
       ],
       [
         -6.34136,
@@ -573,8 +638,8 @@ window.COURSES = [
         106.63122
       ],
       [
-        -6.33925,
-        106.63109
+        -6.3393,
+        106.63108
       ],
       [
         -6.33604,
@@ -629,8 +694,24 @@ window.COURSES = [
         106.63697
       ],
       [
-        -6.32965,
-        106.63691
+        -6.32976,
+        106.63678
+      ],
+      [
+        -6.32969,
+        106.63654
+      ],
+      [
+        -6.32938,
+        106.63655
+      ],
+      [
+        -6.32932,
+        106.63679
+      ],
+      [
+        -6.32957,
+        106.63694
       ],
       [
         -6.3299,
@@ -829,24 +910,36 @@ window.COURSES = [
         106.63005
       ],
       [
-        -6.33918,
-        106.63141
+        -6.33915,
+        106.63114
       ],
       [
-        -6.33971,
-        106.63132
+        -6.33604,
+        106.63265
       ],
       [
-        -6.34073,
-        106.63214
+        -6.3346,
+        106.63356
       ],
       [
-        -6.34134,
-        106.63237
+        -6.33313,
+        106.63409
       ],
       [
-        -6.34162,
-        106.63225
+        -6.33139,
+        106.63579
+      ],
+      [
+        -6.32985,
+        106.63649
+      ],
+      [
+        -6.32945,
+        106.6365
+      ],
+      [
+        -6.32931,
+        106.63671
       ]
     ],
     "surface": "Mostly paved",
