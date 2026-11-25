@@ -512,11 +512,11 @@ window.COURSES = [
   {
     "slug": "citragarden-3-laps-danau-abah",
     "name": "CitraGarden 3 Laps + Danau Abah",
-    "description": "Three end-to-end laps of Jalan CitraGarden Serpong from the roundabout: down to the turning circle by Kuburan Cina, up to the Patung Kuda gate and back. Then south to Danau Abah and home past the Warung Kelambu rest stop. Mostly paved, flat.",
-    "km": 19.6,
+    "description": "Three end-to-end laps of Jalan CitraGarden Serpong from the roundabout: down to the turning circle by Kuburan Cina, up to the Patung Kuda gate and back. Then south to Danau Abah and back to the roundabout. Mostly paved, flat.",
+    "km": 18.5,
     "gpx": "courses/citragarden-3-laps-danau-abah/citragarden-3-laps-danau-abah.gpx",
     "ascentM": 27,
-    "turns": 36,
+    "turns": 31,
     "stops": [
       [
         "Roundabout (start/finish)",
@@ -537,11 +537,6 @@ window.COURSES = [
         "Danau Abah",
         -6.3546875,
         106.6283125
-      ],
-      [
-        "Warung Kelambu (rest stop)",
-        -6.3359751,
-        106.6299544
       ]
     ],
     "sections": [
@@ -553,7 +548,7 @@ window.COURSES = [
       {
         "label": "Danau Abah loop",
         "repeat": 1,
-        "km": 8.1
+        "km": 7.0
       }
     ],
     "preview": [
@@ -870,48 +865,8 @@ window.COURSES = [
         106.63122
       ],
       [
-        -6.33919,
-        106.63098
-      ],
-      [
-        -6.33888,
-        106.63004
-      ],
-      [
-        -6.33852,
-        106.63007
-      ],
-      [
-        -6.3373,
-        106.63061
-      ],
-      [
-        -6.33656,
-        106.63118
-      ],
-      [
-        -6.33608,
-        106.62993
-      ],
-      [
-        -6.33656,
-        106.63118
-      ],
-      [
-        -6.33724,
-        106.63064
-      ],
-      [
-        -6.33828,
-        106.63016
-      ],
-      [
-        -6.33879,
-        106.63005
-      ],
-      [
-        -6.33915,
-        106.63114
+        -6.33925,
+        106.63109
       ],
       [
         -6.33604,
