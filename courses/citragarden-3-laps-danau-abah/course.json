@@ -1,0 +1,24 @@
+{
+  "slug": "citragarden-3-laps-danau-abah",
+  "name": "CitraGarden 3 Laps + Danau Abah",
+  "description": "Three end-to-end laps of Jalan CitraGarden Serpong, from the turning circle by Kuburan Cina to the Patung Kuda gate and back, then south to Danau Abah and back past the Warung Kelambu rest stop. Mostly paved, flat.",
+  "surface": "Mostly paved",
+  "difficulty": "Easy, flat",
+  "gpx": "citragarden-3-laps-danau-abah.gpx",
+  "activity": "gravel_cycling",
+  "profile": "trekking",
+  "segments": [
+    { "label": "Lap", "repeat": 3,
+      "waypoints": [[-6.34162, 106.63225], [-6.32894, 106.63876], [-6.34162, 106.63225]] },
+    { "label": "Danau Abah loop", "repeat": 1,
+      "waypoints": [[-6.34162, 106.63225], [-6.354595, 106.628193], [-6.336075, 106.629926], [-6.34162, 106.63225]] }
+  ],
+  "stops": [
+    ["Kuburan Cina turning circle (start/finish)", -6.34162, 106.63225],
+    ["Patung Kuda CitraGarden Serpong", -6.3289587, 106.6391144],
+    ["Danau Abah", -6.3546875, 106.6283125],
+    ["Warung Kelambu (rest stop)", -6.3359751, 106.6299544]
+  ],
+  "roundabouts": [[-6.32954, 106.63673], [-6.33927, 106.63126], [-6.34135, 106.63223], [-6.35381, 106.62818]],
+  "outAndBack": [[-6.354595, 106.628193], [-6.336075, 106.629926]]
+}

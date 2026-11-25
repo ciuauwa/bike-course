@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-11-25: New course, CitraGarden 3 Laps + Danau Abah (16.6 km): three end-to-end laps of Jalan CitraGarden Serpong between the Kuburan Cina turning circle and the Patung Kuda gate, then Danau Abah and the Warung Kelambu rest stop.
 - 2026-11-22: In the Street View viewer, tapping the turn banner now goes to the turn it shows, and the header status line (section, km, turn counter) opens a Course outline sheet listing every turn by lap, where tapping a row jumps to that turn.
 - 2026-11-22: Where am I now draws a road route back to the course (from the public BRouter service, straight dashed line as fallback), is an icon button, and shows as a compact strip with a close button on phones. Your position is sent to brouter.de only while you are off the route.
 - 2026-11-22: Street View viewer has a Where am I button on the map: it shows your position, how far you are from the route and which way to head to rejoin it, and can jump the viewer to your next turn. The position stays in the browser.
