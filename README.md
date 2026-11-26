@@ -19,6 +19,7 @@ courses/<slug>/course-data.js  generated route + turns (window.COURSE)
 courses/<slug>/<gpx>           generated GPX file
 tools/make_course.py           builds a course from course.json
 tools/check_route.py           offline route checker (spurs, tiny loops, stray U-turns)
+tools/freshness.py             flags stretches nobody rides any more (Strava heatmap + OSM edit dates)
 tools/check_site.mjs           acceptance check: node tools/check_site.mjs (also runs check_route.py)
 ```
 
@@ -71,6 +72,20 @@ A tiny loop is allowed (printed as `ALLOWED hairpin`) when it is within 45 m of 
 - `python3 tools/check_route.py --selftest` runs synthetic cases (side spur, declared spur, repeated laps, out and back, tiny loop, far waypoint, declared hairpin, declared U-turn and their stale warnings) and prints `SELFTEST OK`.
 - `node tools/check_site.mjs` also runs the route check and fails if it does.
 - In the browser, `window.__viewer.lineCheck()` returns `{ maxDevM, worstIndex }`: for every view point it measures how far the blue ridden line (its vertices and segment midpoints) is from the true route polyline. It should be below 1 m. It only reads; it does not move the map or the current position.
+
+## Is the road still there?
+
+OpenStreetMap only says a road was mapped once. `python3 tools/freshness.py` flags stretches of a course that nobody seems to ride any more, from two signals: the Strava global heatmap (rides of the last 12 months) and the last-edit date of the OpenStreetMap ways under the route. Standard library only; the heatmap is read through your own signed-in browser, so there is no Strava login in the tool.
+
+1. `python3 tools/freshness.py script <slug>` prints a script for `aside repl` (you must be signed in to Strava in that browser). The script samples the route every 25 m, reads the heatmap tiles it needs (zoom 15, one fetch per tile) and prints one `HEAT_JSON=` line, or `HEAT_ERROR=<reason>` (not signed in, a tile that did not load). Run it as `aside repl "$(python3 tools/freshness.py script <slug>)" > heat.txt`. It prints no cookies or tokens.
+2. `python3 tools/freshness.py report <slug> --heat heat.txt` reads that output (or the bare JSON object). It refuses a file whose sample count no longer matches the course (the course was rebuilt since: redo step 1). Options: `--no-osm` skips the Overpass query, `--cold N` (default 0) and `--faint N` (default 30) set the heat limits, `--min-len M` (default 50) folds shorter cold or faint stretches into their neighbours as noise (a tile edge, a junction), `--out DIR` sets the output folder.
+3. Read the report: a summary line (`km, % ridden, % faint, % cold`), then one line per cold and per faint stretch with the km range, length, maximum heat, the nearest OSM way (`highway`, `surface`, `name`), its last-edit date and a Google Maps link to the middle of the stretch, ending with `FRESHNESS OK` or `FRESHNESS: n cold stretch(es), total m m`. It always exits 0 (it is a report, not a gate); it exits 2 only for bad input. If Overpass is down or busy after 3 retries, the report is still produced, without the road and last-edit columns, and says so.
+
+Cold means no rides on the heatmap there in the last 12 months (heat 0); faint means a trace (heat 1 to 30 of 255); everything else is ridden. An out-and-back course rides the same road twice, so a stretch is listed once per pass. `python3 tools/freshness.py --selftest` runs the offline tests and prints `SELFTEST OK`.
+
+Limits: the heatmap covers the last 12 months and only Strava users, so a quiet village path can be cold and still exist, and a popular road can stay bright after it is closed to bikes. The OSM date is the last edit of the way itself, which says someone touched it, not that it was surveyed. A cold stretch is a prompt to look (the map link, Street View), not proof.
+
+The heatmap is Strava's data and is not ours to republish. The report goes to `.gstack/freshness/<slug>/` (`freshness.json`, `freshness.txt`), which is git-ignored, and the tool refuses any `--out` inside the repo outside `.gstack/`. Never copy heatmap-derived numbers into `courses/` or any other published path.
 
 ## Where am I
 
