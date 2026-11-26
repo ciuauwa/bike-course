@@ -50,7 +50,8 @@
   /* Forward-direction buttons carry their icon on the right of the text (desktop); the phone stacks icon over caption. */
   #next, #nextTurn { flex-direction:row-reverse; }
   /* Desktop: the button row, the turn wrapper and the More panel are transparent wrappers, so their children sit in the bar. */
-  #btnRow, #morePanel, #turnBtns { display:contents; }
+  #btnRow, #morePanel { display:contents; }
+  #bar button[hidden] { display:none; }
   #bar #more { display:none; }
   /* Play is the primary button; its icon and word follow data-state (play, pause, replay). */
   #bar #play { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
@@ -218,7 +219,7 @@
     #slider { order:-1; flex:none; width:100%; min-width:0; height:32px; margin:0; accent-color:var(--accent); }
     /* Six buttons share the row (previous turn, back, play, next, next turn, more): icon over a small caption. */
     #btnRow { display:flex; gap:5px; }
-    #btnRow .group, #turnBtns { display:contents; }
+    #btnRow .group { display:contents; }
     #btnRow button { flex:1 1 0; min-width:44px; min-height:48px; padding:0 1px; gap:3px; flex-direction:column; font-size:11px; line-height:1.1; }
     #btnRow #play { flex:1.1 1 0; }
     #btnRow .ic { width:22px; height:22px; }
@@ -324,13 +325,11 @@
   <div id="bar">
     <div id="btnRow">
       <div class="group" id="transport">
-        <div id="turnBtns" style="display:none">
-          <button id="prevTurn" type="button" title="Previous turn (Down arrow)" aria-label="Previous turn"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6 6h2v12H6zM9.5 12l8.5 6V6z"/></svg><span class="lbl">Prev turn</span></button>
-          <button id="nextTurn" type="button" title="Next turn (Up arrow)" aria-label="Next turn"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6 18l8.5-6L6 6zM16 6h2v12h-2z"/></svg><span class="lbl">Next turn</span></button>
-        </div>
-        <button id="prev" type="button" title="Back one step (Left arrow)" aria-label="Back one step"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M18 5v14L6 12z"/></svg><span class="lbl">Back</span></button>
+        <button id="prevTurn" hidden type="button" title="Previous turn (Down arrow)" aria-label="Previous turn"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6 6h2v12H6zM9.5 12l8.5 6V6z"/></svg><span class="lbl">Prev turn</span></button>
+        <button id="prev" type="button" title="Back one step (Left arrow)" aria-label="Back one step"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">Back</span></button>
         <button id="play" type="button" data-state="play" title="Play (Space)" aria-label="Play"><svg class="ic ic-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M7 4.5v15l12.5-7.5z"/></svg><svg class="ic ic-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6.5 5h4v14h-4zM13.5 5h4v14h-4z"/></svg><svg class="ic ic-replay" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg><span class="lbl" id="playLbl">Play</span></button>
-        <button id="next" type="button" title="Next step (Right arrow)" aria-label="Next step"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6 5v14l12-7z"/></svg><span class="lbl">Next</span></button>
+        <button id="next" type="button" title="Next step (Right arrow)" aria-label="Next step"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">Next</span></button>
+        <button id="nextTurn" hidden type="button" title="Next turn (Up arrow)" aria-label="Next turn"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6 18l8.5-6L6 6zM16 6h2v12h-2z"/></svg><span class="lbl">Next turn</span></button>
       </div>
       <button id="more" type="button" aria-expanded="false" aria-controls="morePanel" aria-label="More controls" title="More: speed, sections, links"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="2.2"/><circle cx="12" cy="12" r="2.2"/><circle cx="19" cy="12" r="2.2"/></svg><span class="lbl">More</span></button>
     </div>
@@ -692,7 +691,7 @@ function boot(C, slug) {
   }
   function jumpNextTurn() { var vi = turnJumpIdx(1); if (vi >= 0) setIndex(vi); }
   function jumpPrevTurn() { var vi = turnJumpIdx(-1); if (vi >= 0) setIndex(vi); }
-  if (turns.length) $('turnBtns').style.display = '';
+  if (turns.length) { $('prevTurn').hidden = false; $('nextTurn').hidden = false; }
   $('nextTurn').addEventListener('click', jumpNextTurn);
   $('prevTurn').addEventListener('click', jumpPrevTurn);
 

@@ -5,7 +5,7 @@ Course used: `viewer.html?course=aeris-3-laps-lake` (19.9 km, 43 turns, sections
 | ID | Steps | Expected |
 |---|---|---|
 | VC-01 order | At 1280x800 and at 390x844 read the buttons left to right. | Previous turn, Back, Play, Next, Next turn, and on the phone More last. The order is the same on both. |
-| VC-02 no turns | Open a course with no turns (or run `document.getElementById('turnBtns').style.display='none'`). | The two turn buttons are hidden; Back, Play and Next keep their order. |
+| VC-02 no turns | Open a course with no turns (or set `hidden` on `#prevTurn` and `#nextTurn` in the console). | The two turn buttons are hidden; Back, Play and Next keep their order. |
 | VC-03 icons | Look at each button, and inspect `#bar` and `#back`. | Every icon is an inline `<svg>` (no text arrows, no emoji). Back and Next are single triangles; Prev turn and Next turn are a triangle with a bar, so they look different from Back and Next; Play is a triangle, Pause two bars, Replay a circular arrow; More is three dots; the back link is a chevron. |
 | VC-04 desktop labels | At 1280x800. | Each button shows icon and word: `Prev turn`, `Back`, `Play`, `Next`, `Next turn`. Icon is left of the word for Prev turn, Back and Play, and right of the word for Next and Next turn. The back link reads chevron plus `All courses`. More is not shown. |
 | VC-05 phone labels | At 390x844. | Each button shows the icon with a caption of about 11 px under it, using the same words as desktop, plus `More`. The back link is the chevron alone. |
