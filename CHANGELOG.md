@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-11-26: The course list now shows the newest course first. Each course.json can set `added` (`YYYY-MM-DD`); courses without it come last, ordered by name. The viewer's default course is now the newest one.
 - 2026-11-25: New course, CitraGarden 3 Laps + Danau Abah (18.5 km), starting and finishing at the same roundabout as the Aeris course: three end-to-end laps of Jalan CitraGarden Serpong between the Kuburan Cina turning circle and the Patung Kuda gate, then out to Danau Abah and back.
 - 2026-11-22: In the Street View viewer, tapping the turn banner now goes to the turn it shows, and the header status line (section, km, turn counter) opens a Course outline sheet listing every turn by lap, where tapping a row jumps to that turn.
 - 2026-11-22: Where am I now draws a road route back to the course (from the public BRouter service, straight dashed line as fallback), is an icon button, and shows as a compact strip with a close button on phones. Your position is sent to brouter.de only while you are off the route.

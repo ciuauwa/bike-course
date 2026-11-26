@@ -6,13 +6,13 @@ On a phone the viewer fits the screen without scrolling: Street View on top, the
 
 The turn banner is a button: tap or click it (or press Enter or Space) to jump to the turn it shows, and playback carries on from there. The header status line opens the **Course outline** (a sheet on phones, a 380 px panel on desktop) that lists every turn by lap, where tapping a turn or a lap header jumps there; test cases are in `docs/testcases/course-outline.md`.
 
-The course list shows each course as a card with a small map of the route (stops as numbered dots), distance, climb, ride time at 15 km/h, turn count, the surface and difficulty chips, the route sections and the stops. All of it comes from `courses/index.js` (`window.COURSES`), which `tools/make_course.py` regenerates from every course folder. Each entry has `slug`, `name`, `description`, `km`, `gpx`, `ascentM` (total climb in metres, from BRouter's "filtered ascend"), `turns`, `stops`, `sections` (`{label, repeat, km}`, with km for one repetition), `preview` (the outline as simplified `[lat, lon]` points, at most 250) and the optional `surface` and `difficulty`.
+The course list shows each course as a card with a small map of the route (stops as numbered dots), distance, climb, ride time at 15 km/h, turn count, the surface and difficulty chips, the route sections and the stops. All of it comes from `courses/index.js` (`window.COURSES`), which `tools/make_course.py` regenerates from every course folder. The list shows the newest course first: entries are sorted by `added` (see course.json fields), newest first, and courses without `added` come last, ordered by name. Each entry has `slug`, `name`, `description`, `km`, `gpx`, the optional `added`, `ascentM` (total climb in metres, from BRouter's "filtered ascend"), `turns`, `stops`, `sections` (`{label, repeat, km}`, with km for one repetition), `preview` (the outline as simplified `[lat, lon]` points, at most 250) and the optional `surface` and `difficulty`.
 
 ## Layout
 
 ```
 index.html                     course list
-viewer.html                    viewer, chosen with ?course=<slug> (defaults to the first course)
+viewer.html                    viewer, chosen with ?course=<slug> (defaults to the first course, which is now the newest)
 courses/index.js               generated list of courses (window.COURSES)
 courses/<slug>/course.json     the course definition (you write this)
 courses/<slug>/course-data.js  generated route + turns (window.COURSE)
@@ -24,7 +24,7 @@ tools/check_site.mjs           acceptance check: node tools/check_site.mjs (also
 
 ## Add a course
 
-1. Create `courses/<slug>/course.json` (slug uses only `a-z`, `0-9`, `-`, and matches the folder name).
+1. Create `courses/<slug>/course.json` (slug uses only `a-z`, `0-9`, `-`, and matches the folder name). Set `added` to today's date as `YYYY-MM-DD`, so the course appears at the top of the list.
 2. Run `python3 tools/make_course.py courses/<slug>/course.json`.
 3. Open `index.html` and check the course.
 4. Run `node tools/check_site.mjs`, then commit and push.
@@ -34,6 +34,7 @@ tools/check_site.mjs           acceptance check: node tools/check_site.mjs (also
 | Field | Required | Meaning |
 |---|---|---|
 | `slug` | yes | Folder name and URL id |
+| `added` | no | Date the course was added, `YYYY-MM-DD`. The course list shows the newest first |
 | `name` | yes | Display name |
 | `description` | no | One or two sentences for the course list |
 | `gpx` | yes | GPX file name written into the course folder |
