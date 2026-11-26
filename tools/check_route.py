@@ -11,12 +11,18 @@ for routing accidents:
 
   spur                (error) the route rides out and back along the same way
   loop                (error) a tiny closed loop (comes back within 8 m of a point passed 30-250 m earlier)
-  uturn-turn          (error) a turns[] U-turn that is not at an allowed spur or roundabout
+  uturn-turn          (error) a turns[] U-turn that is not at an allowed spur, roundabout or declared U-turn
   waypoint-off-route  (warn)  a waypoint more than 15 m from the routed line
   outAndBack          (warn)  a declared turn-around point that matches no spur (stale)
+  hairpins            (warn)  a declared hairpin that matches no tiny loop (stale)
+  uTurns              (warn)  a declared U-turn point that matches no U-turn instruction (stale)
 
 A spur is allowed when its tip is within 45 m of a course.json "roundabouts"
 point or within 40 m of a course.json "outAndBack" point (intended turn-arounds).
+A tiny loop is allowed (ALLOWED hairpin) when it is within 45 m of a course.json "hairpins"
+point (a mountain hairpin whose two legs run side by side). A U-turn instruction is
+allowed (ALLOWED u-turn) when it is within 60 m of a course.json "uTurns" point (a U-turn
+at a gap in the median of a divided road).
 
 Importable: check(cfg, latlon_points, turns=None) -> list of finding dicts with
 keys rule, level, message, lat, lon, d (metres from the start).
@@ -34,6 +40,7 @@ SPUR_MIN = 10.0         # one-way length that counts as a spur (m)
 ROUNDABOUT_R = 45.0     # spur tip / loop this close to a roundabout is fine
 OUTBACK_R = 40.0        # spur tip this close to an outAndBack point is intended
 UTURN_R = 60.0          # a uturn turn this close to an allowed tip / roundabout is fine
+HAIRPIN_R = 45.0        # a tiny loop this close to a declared hairpin is fine
 LOOP_NEAR = 8.0
 LOOP_MIN, LOOP_MAX = 30.0, 250.0
 WAYPOINT_MAX = 15.0
@@ -64,13 +71,15 @@ def _seg_dist(px, py, ax, ay, bx, by):
 
 def analyze(cfg, latlon_points, turns=None):
     """Return (findings, allowed): findings are errors/warnings, allowed are the spurs
-    that were let through by roundabouts / outAndBack."""
+    that were let through by roundabouts / outAndBack / hairpins / uTurns."""
     pts = [(float(p[0]), float(p[1])) for p in latlon_points]
     findings, allowed = [], []
     if len(pts) < 2:
         return findings, allowed
     roundabouts = [tuple(r) for r in cfg.get("roundabouts", [])]
     outback = [tuple(r) for r in cfg.get("outAndBack", [])]
+    hairpins = [tuple(r) for r in cfg.get("hairpins", [])]
+    uturn_pts = [tuple(r) for r in cfg.get("uTurns", [])]
 
     lat0 = sum(p[0] for p in pts) / len(pts)
     lon0 = sum(p[1] for p in pts) / len(pts)
@@ -165,6 +174,7 @@ def analyze(cfg, latlon_points, turns=None):
         x, y = rs[i]
         return any((x - a) ** 2 + (y - b) ** 2 <= ROUNDABOUT_R ** 2 for a, b in rb_xy)
 
+    hairpins_used = set()
     cell = LOOP_NEAR
     grid = {}
     for i, (x, y) in enumerate(rs):
@@ -184,11 +194,26 @@ def analyze(cfg, latlon_points, turns=None):
                         if (x - rs[jj][0]) ** 2 + (y - rs[jj][1]) ** 2 <= LOOP_NEAR ** 2:
                             hit = jj if hit is None else max(hit, jj)
         if hit is not None:
-            findings.append(_finding(
-                "loop", "error",
-                "Tiny closed loop: the route comes back to a point it passed %d m earlier" % round((i - hit) * STEP),
-                rs_ll[i][0], rs_ll[i][1], i * STEP))
+            back = round((i - hit) * STEP)
+            declared = [h for h in hairpins if hav(rs_ll[i], h) <= HAIRPIN_R or hav(rs_ll[hit], h) <= HAIRPIN_R]
+            if declared:
+                hairpins_used.update(declared)
+                allowed.append(_finding(
+                    "hairpin", "error",
+                    "Hairpin bend: the route comes back to a point it passed %d m earlier (declared in hairpins)" % back,
+                    rs_ll[i][0], rs_ll[i][1], i * STEP))
+            else:
+                findings.append(_finding(
+                    "loop", "error",
+                    "Tiny closed loop: the route comes back to a point it passed %d m earlier" % back,
+                    rs_ll[i][0], rs_ll[i][1], i * STEP))
             skip_until = i + int(60 / STEP)
+    for h in hairpins:
+        if h not in hairpins_used:
+            near_i = min(range(len(pts)), key=lambda i: hav(pts[i], h))
+            findings.append(_finding("hairpins", "warn",
+                                     "Declared hairpin matches no tiny loop (stale declaration)",
+                                     h[0], h[1], cum[near_i]))
 
     # ---- waypoints far from the routed line
     seen = set()
@@ -212,14 +237,30 @@ def analyze(cfg, latlon_points, turns=None):
 
     # ---- U-turn instructions that are not at an allowed spur or a roundabout
     ok_places = [sp["ll"] for sp in spurs if sp["ok"]] + roundabouts
+    uturn_used = set()
     for t in turns or []:
         if t.get("type") != "uturn":
             continue
         ll = (t["lat"], t["lon"])
-        if not near(ll, ok_places, UTURN_R):
+        declared = [q for q in uturn_pts if hav(ll, q) <= UTURN_R]
+        uturn_used.update(declared)
+        if near(ll, ok_places, UTURN_R):
+            continue
+        if declared:
+            allowed.append(_finding("u-turn", "error",
+                                    "U-turn instruction (%s) at a declared U-turn point (uTurns)" % t.get("text", ""),
+                                    ll[0], ll[1], t.get("d", 0)))
+        else:
             findings.append(_finding("uturn-turn", "error",
-                                     "U-turn instruction (%s) that is not at an allowed spur or roundabout" % t.get("text", ""),
+                                     "U-turn instruction (%s) that is not at an allowed spur, roundabout or declared U-turn" % t.get("text", ""),
                                      ll[0], ll[1], t.get("d", 0)))
+    if turns is not None:  # stale check needs the turn list; without one nothing can be matched
+        for q in uturn_pts:
+            if q not in uturn_used:
+                near_i = min(range(len(pts)), key=lambda i: hav(pts[i], q))
+                findings.append(_finding("uTurns", "warn",
+                                         "Declared U-turn point matches no U-turn instruction (stale declaration)",
+                                         q[0], q[1], cum[near_i]))
 
     findings.sort(key=lambda f: f["d"])
     allowed.sort(key=lambda f: f["d"])
@@ -259,7 +300,7 @@ def print_report(slug, findings, allowed, out=sys.stdout):
         print(format_finding(f), file=out)
     errs = sum(1 for f in findings if f["level"] == "error")
     warns = sum(1 for f in findings if f["level"] == "warn")
-    print("%s: %d error(s), %d warning(s), %d allowed spur(s)" % (slug, errs, warns, len(allowed)), file=out)
+    print("%s: %d error(s), %d warning(s), %d allowed" % (slug, errs, warns, len(allowed)), file=out)
     return errs
 
 
@@ -353,6 +394,28 @@ def selftest():
     expect("(g) stray uturn is an error", rules(fs, "error") == ["uturn-turn"], str(fs))
     fs, _ = analyze({"outAndBack": [tip]}, spur_pts, [t])
     expect("(g) uturn at an allowed spur is fine", not rules(fs, "error"), str(fs))
+
+    # (h) a hairpin: loop allowed when declared, error when not near, stale declaration warns
+    hp = _ll(500, r)  # middle of the loop in (e)
+    fs, al = analyze({"hairpins": [hp]}, loop_pts)
+    expect("(h) loop allowed by a hairpin", not rules(fs) and rules(al) == ["hairpin"], str((fs, al)))
+    fs, al = analyze({"hairpins": [_ll(500, 300)]}, loop_pts)
+    expect("(h) loop 300 m from the hairpin is still an error",
+           "loop" in rules(fs, "error") and "hairpins" in rules(fs, "warn") and not al, str((fs, al)))
+    fs, al = analyze({"hairpins": [_ll(100, 300)]}, straight)
+    expect("(h) stale hairpin warns", rules(fs) == ["hairpins"] and fs[0]["level"] == "warn", str(fs))
+
+    # (i) a median U-turn: allowed when declared in uTurns, error when not near, stale declaration warns
+    mt = {"type": "uturn", "text": "U-turn", "lat": _ll(500, 0)[0], "lon": _ll(500, 0)[1], "d": 500}
+    fs, al = analyze({"uTurns": [_ll(520, 10)]}, straight, [mt])
+    expect("(i) uturn allowed by uTurns", not rules(fs) and rules(al) == ["u-turn"], str((fs, al)))
+    fs, al = analyze({"uTurns": [_ll(800, 0)]}, straight, [mt])
+    expect("(i) uturn 300 m from the declared point is still an error",
+           rules(fs, "error") == ["uturn-turn"] and "uTurns" in rules(fs, "warn") and not al, str((fs, al)))
+    fs, al = analyze({"uTurns": [_ll(500, 0)]}, straight, [])
+    expect("(i) stale uTurns warns", rules(fs) == ["uTurns"] and fs[0]["level"] == "warn", str(fs))
+    fs, al = analyze({}, straight, [mt])
+    expect("(i) undeclared uturn is an error", rules(fs, "error") == ["uturn-turn"] and not al, str((fs, al)))
 
     if fails:
         print("SELFTEST FAILED")

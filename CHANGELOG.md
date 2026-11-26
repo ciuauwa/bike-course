@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-11-26: The route check accepts real road features: `hairpins` in course.json allows a mountain hairpin that would read as a tiny loop, `uTurns` allows a U-turn at a gap in the median of a divided road (worded "U-turn at the gap in the median"), and stale declarations warn. `added` may now carry a time (`YYYY-MM-DDTHH:MM`) so two courses added on the same day sort correctly.
 - 2026-11-26: The Street View viewer's controls are one system on phone and desktop: the same SVG icons and the same order (previous turn, back, play, next, next turn), the same words (icon over a caption on phones), Play is the primary button, Back and Next turn grey out when there is nowhere to go, Play becomes Pause and Replay, More looks pressed while open, and the current section is highlighted.
 - 2026-11-26: Each course card now shows an elevation profile chart, the highest point, the steepest gradient (over 100 m, uphill only) and the share of the route on main roads. Rebuild a course with tools/make_course.py to get the new figures.
 - 2026-11-26: The climb figure is now computed from the course's elevation profile instead of BRouter's smoothed estimate, so it is closer to what Garmin Connect shows, and each course card also shows the unpaved share of the route.

@@ -24,7 +24,7 @@ tools/check_site.mjs           acceptance check: node tools/check_site.mjs (also
 
 ## Add a course
 
-1. Create `courses/<slug>/course.json` (slug uses only `a-z`, `0-9`, `-`, and matches the folder name). Set `added` to today's date as `YYYY-MM-DD`, so the course appears at the top of the list.
+1. Create `courses/<slug>/course.json` (slug uses only `a-z`, `0-9`, `-`, and matches the folder name). Set `added` to today's date as `YYYY-MM-DD` (or `YYYY-MM-DDTHH:MM` to order two courses added on the same day), so the course appears at the top of the list.
 2. Run `python3 tools/make_course.py courses/<slug>/course.json`.
 3. Open `index.html` and check the course.
 4. Run `node tools/check_site.mjs`, then commit and push.
@@ -34,7 +34,7 @@ tools/check_site.mjs           acceptance check: node tools/check_site.mjs (also
 | Field | Required | Meaning |
 |---|---|---|
 | `slug` | yes | Folder name and URL id |
-| `added` | no | Date the course was added, `YYYY-MM-DD`. The course list shows the newest first |
+| `added` | no | When the course was added: `YYYY-MM-DD`, or `YYYY-MM-DDTHH:MM` (24 h) to order two courses added on the same day. A date without a time counts as `T00:00`. The course list shows the newest first, and visitors never see the time |
 | `name` | yes | Display name |
 | `description` | no | One or two sentences for the course list |
 | `gpx` | yes | GPX file name written into the course folder |
@@ -46,6 +46,8 @@ tools/check_site.mjs           acceptance check: node tools/check_site.mjs (also
 | `stops` | no | Labelled points on the map: `[label, lat, lon]` |
 | `roundabouts` | no | `[lat, lon]` of roundabouts, so turns there are described as roundabout moves |
 | `outAndBack` | no | `[lat, lon]` of intended turn-around points, where the route is meant to ride out and come back the same way (see Route checks) |
+| `hairpins` | no | `[lat, lon]` of mountain hairpins whose two legs run side by side (within about 8 m), so the route check does not report them as a tiny loop (see Route checks) |
+| `uTurns` | no | `[lat, lon]` of intended U-turns at a gap in the median of a divided road, so the route check allows them and the turn reads "U-turn at the gap in the median" (see Route checks) |
 
 ## Route checks
 
@@ -54,15 +56,19 @@ tools/check_site.mjs           acceptance check: node tools/check_site.mjs (also
 | Rule | Level | Catches |
 |---|---|---|
 | `spur` | error | The route rides out and back along the same way (a dead-end detour of 10 m or more), found from the geometry, not from the turn list. Laps and the opposite carriageway are not spurs, only a reversal at a tip is |
-| `loop` | error | A tiny closed loop: the route returns within 8 m of a point it passed 30 to 250 m earlier |
-| `uturn-turn` | error | A U-turn instruction in `turns` that is not at an allowed spur or a roundabout |
+| `loop` | error | A tiny closed loop: the route returns within 8 m of a point it passed 30 to 250 m earlier, and it is not within 45 m of a declared `hairpins` point |
+| `uturn-turn` | error | A U-turn instruction in `turns` that is not at an allowed spur, a roundabout or within 60 m of a declared `uTurns` point |
 | `waypoint-off-route` | warn | A waypoint more than 15 m from the routed line (the router snapped it to another way) |
 | `outAndBack` | warn | A declared turn-around that matches no spur (stale) |
+| `hairpins` | warn | A declared hairpin that matches no tiny loop (stale) |
+| `uTurns` | warn | A declared U-turn point that matches no U-turn instruction (stale) |
 
 A spur is allowed (printed as `ALLOWED`) when its tip is within 45 m of a `roundabouts` point or within 40 m of a point in the optional `outAndBack` list in `course.json`. Declare the point where you really turn around, for example `"outAndBack": [[-6.3363876, 106.6247291]]`. If a spur is unintended, move the waypoint onto the road instead.
 
+A tiny loop is allowed (printed as `ALLOWED hairpin`) when it is within 45 m of a point in `hairpins`, for example `"hairpins": [[-6.384184, 106.58515]]`: use it for a real mountain hairpin, never to hide a routing accident. A U-turn instruction is allowed (printed as `ALLOWED u-turn`) when it is within 60 m of a point in `uTurns`, for example `"uTurns": [[-6.339759, 106.62623]]`: use it where the route really turns around at a median gap (turn left onto the boulevard, ride on, U-turn). `make_course.py` then words that turn "U-turn at the gap in the median". A declared point that matches nothing gives a `warn` so stale declarations get removed. Both fields must be lists of `[lat, lon]` number pairs.
+
 - `python3 tools/make_course.py courses/<slug>/course.json` runs the same check on the fresh route before it writes anything. On errors it prints them and exits 1 without writing. Add `--force` as a second argument to write anyway (the findings are still printed).
-- `python3 tools/check_route.py --selftest` runs synthetic cases (side spur, declared spur, repeated laps, out and back, tiny loop, far waypoint) and prints `SELFTEST OK`.
+- `python3 tools/check_route.py --selftest` runs synthetic cases (side spur, declared spur, repeated laps, out and back, tiny loop, far waypoint, declared hairpin, declared U-turn and their stale warnings) and prints `SELFTEST OK`.
 - `node tools/check_site.mjs` also runs the route check and fails if it does.
 - In the browser, `window.__viewer.lineCheck()` returns `{ maxDevM, worstIndex }`: for every view point it measures how far the blue ridden line (its vertices and segment midpoints) is from the true route polyline. It should be below 1 m. It only reads; it does not move the map or the current position.
 
