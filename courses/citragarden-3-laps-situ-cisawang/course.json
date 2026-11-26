@@ -1,0 +1,137 @@
+{
+  "slug": "citragarden-3-laps-situ-cisawang",
+  "added": "2026-11-26",
+  "name": "CitraGarden 3 Laps + Situ Cisawang",
+  "description": "Three end-to-end laps of Jalan CitraGarden Serpong, then a long loop: south to Danau Abah and Danau Suradita, on to Situ Cisawang, and home through Kampung Ekowisata Keranggan.",
+  "difficulty": "Long, some climbing",
+  "gpx": "citragarden-3-laps-situ-cisawang.gpx",
+  "activity": "gravel_cycling",
+  "profile": "trekking",
+  "segments": [
+    {
+      "label": "Lap",
+      "repeat": 3,
+      "waypoints": [
+        [
+          -6.329311,
+          106.63671
+        ],
+        [
+          -6.34162,
+          106.63225
+        ],
+        [
+          -6.32894,
+          106.63876
+        ],
+        [
+          -6.329311,
+          106.63671
+        ]
+      ]
+    },
+    {
+      "label": "Situ Cisawang loop",
+      "repeat": 1,
+      "waypoints": [
+        [
+          -6.329311,
+          106.63671
+        ],
+        [
+          -6.354595,
+          106.628193
+        ],
+        [
+          -6.349798,
+          106.634827
+        ],
+        [
+          -6.362228,
+          106.656488
+        ],
+        [
+          -6.347937,
+          106.652553
+        ],
+        [
+          -6.329311,
+          106.63671
+        ]
+      ]
+    }
+  ],
+  "stops": [
+    [
+      "Roundabout (start/finish)",
+      -6.329311,
+      106.63671
+    ],
+    [
+      "Kuburan Cina turning circle",
+      -6.34162,
+      106.63225
+    ],
+    [
+      "Patung Kuda CitraGarden Serpong",
+      -6.3289587,
+      106.6391144
+    ],
+    [
+      "Danau Abah",
+      -6.3546875,
+      106.6283125
+    ],
+    [
+      "Danau Suradita",
+      -6.3496943,
+      106.6348394
+    ],
+    [
+      "Situ Cisawang",
+      -6.3630339,
+      106.6569793
+    ],
+    [
+      "Kampung Ekowisata Keranggan",
+      -6.3481001,
+      106.6526569
+    ]
+  ],
+  "roundabouts": [
+    [
+      -6.32954,
+      106.63673
+    ],
+    [
+      -6.33927,
+      106.63126
+    ],
+    [
+      -6.34135,
+      106.63223
+    ],
+    [
+      -6.35381,
+      106.62818
+    ]
+  ],
+  "outAndBack": [
+    [
+      -6.354595,
+      106.628193
+    ],
+    [
+      -6.349798,
+      106.634827
+    ],
+    [
+      -6.362228,
+      106.656488
+    ],
+    [
+      -6.347937,
+      106.652553
+    ]
+  ]
+}
