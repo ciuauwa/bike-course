@@ -2,7 +2,7 @@
   "slug": "citragarden-gunung-dago",
   "added": "2026-11-26T12:00",
   "name": "CitraGarden to Gunung Dago",
-  "description": "Out and back from the CitraGarden Serpong roundabout to the top of Gunung Dago in Parung Panjang by the village road. The Wisata Alam Gunung Dago ticket gate is marked as a stop, about 600 m off the route.",
+  "description": "Out and back from the CitraGarden Serpong roundabout to Wisata Alam Gunung Dago in Parung Panjang: ride to the ticket gate, then climb the steep park road as far as riders go (about 137 m), and return the same way.",
   "difficulty": "Hilly, steep final climb",
   "gpx": "citragarden-gunung-dago.gpx",
   "activity": "gravel_cycling",
@@ -17,8 +17,24 @@
           106.63671
         ],
         [
-          -6.385833,
-          106.584861
+          -6.389155,
+          106.580731
+        ],
+        [
+          -6.387575,
+          106.581605
+        ],
+        [
+          -6.386124,
+          106.582846
+        ],
+        [
+          -6.387575,
+          106.581605
+        ],
+        [
+          -6.389113,
+          106.581077
         ],
         [
           -6.329311,
@@ -34,14 +50,14 @@
       106.63671
     ],
     [
-      "Gunung Dago top",
-      -6.3858333,
-      106.5847222
-    ],
-    [
-      "Wisata Alam Gunung Dago (ticket gate, off route)",
+      "Wisata Alam Gunung Dago (ticket gate)",
       -6.3890384,
       106.5807757
+    ],
+    [
+      "Gunung Dago (end of the ridden climb)",
+      -6.386124,
+      106.582846
     ]
   ],
   "roundabouts": [
@@ -52,20 +68,8 @@
   ],
   "outAndBack": [
     [
-      -6.385833,
-      106.584861
-    ]
-  ],
-  "hairpins": [
-    [
-      -6.384184,
-      106.58515
-    ]
-  ],
-  "uTurns": [
-    [
-      -6.339759,
-      106.62623
+      -6.386124,
+      106.582846
     ]
   ]
 }
