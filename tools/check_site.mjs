@@ -109,6 +109,34 @@ checkHtml('viewer.html', ['turn-banner', 'tile.openstreetmap.org', 'server.arcgi
   'id="more"', 'id="morePanel"', 'id="legend"', 'id="stopsToggle"', 'id="stopsList"', 'id="locate"', 'id="locInfo"', 'id="locJump"', 'id="locClose"', 'id="outlineToggle"', 'id="outline"', 'id="outlineList"', 'id="outlineClose"', 'brouter.de/brouter', 'aria-label="Where am I"', 'watchPosition', '100dvh', 'safe-area-inset-bottom', 'viewport-fit=cover'],
   ['basemaps.cartocdn.com', 'src="course-data.js"']);
 
+// Viewer control bar: the six control ids exist, and the bar and the back link use inline SVG icons, never text arrows or emoji glyphs.
+{
+  const viewerFile = path.join(root, 'viewer.html');
+  if (fs.existsSync(viewerFile)) {
+    const html = fs.readFileSync(viewerFile, 'utf8');
+    for (const id of ['prev', 'play', 'next', 'prevTurn', 'nextTurn', 'more']) if (!html.includes(`id="${id}"`)) err(`viewer.html: missing control id="${id}"`);
+    const FORBIDDEN_GLYPHS = ['\u25C0', '\u25B6', '\u23EE', '\u23ED', '\u22EF', '\u2190', '&#9664;', '&#9654;', '&#9198;', '&#9197;', '&#8943;', '&larr;'];
+    const barStart = html.indexOf('<div id="bar">');
+    let barBlock = '';
+    if (barStart < 0) err('viewer.html: <div id="bar"> not found');
+    else { // the block up to the </div> that closes it
+      const tag = /<(\/?)div\b/g;
+      tag.lastIndex = barStart;
+      let depth = 0, m;
+      while ((m = tag.exec(html))) {
+        depth += m[1] ? -1 : 1;
+        if (depth === 0) { barBlock = html.slice(barStart, tag.lastIndex); break; }
+      }
+      if (!barBlock) err('viewer.html: <div id="bar"> is not closed');
+    }
+    const back = (html.match(/<a\b[^>]*\bid="back"[^>]*>[\s\S]*?<\/a>/) || [''])[0];
+    if (!back) err('viewer.html: the #back link was not found');
+    for (const [name, block] of [['#bar', barBlock], ['#back', back]]) {
+      for (const g of FORBIDDEN_GLYPHS) if (block.includes(g)) err(`viewer.html: ${name} must use inline SVG icons, found "${g}"`);
+    }
+  }
+}
+
 // Route checks (offline): unintended spurs, tiny loops, stray U-turns. See tools/check_route.py.
 const routeCheck = spawnSync('python3', [path.join(root, 'tools', 'check_route.py')], { encoding: 'utf8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' } });
 const routeOut = ((routeCheck.stdout || '') + (routeCheck.stderr || '')).trim();

@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-11-26: The Street View viewer's controls are one system on phone and desktop: the same SVG icons and the same order (previous turn, back, play, next, next turn), the same words (icon over a caption on phones), Play is the primary button, Back and Next turn grey out when there is nowhere to go, Play becomes Pause and Replay, More looks pressed while open, and the current section is highlighted.
 - 2026-11-26: Each course card now shows an elevation profile chart, the highest point, the steepest gradient (over 100 m, uphill only) and the share of the route on main roads. Rebuild a course with tools/make_course.py to get the new figures.
 - 2026-11-26: The climb figure is now computed from the course's elevation profile instead of BRouter's smoothed estimate, so it is closer to what Garmin Connect shows, and each course card also shows the unpaved share of the route.
 - 2026-11-26: New course, CitraGarden Lap + Situ Cisawang (31.6 km, 110 m climb): one end-to-end lap of Jalan CitraGarden Serpong, then a loop out through Kampung Ekowisata Keranggan to Situ Cisawang and home past Danau Suradita and Danau Abah.

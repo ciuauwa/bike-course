@@ -33,15 +33,46 @@
   #head a { color:var(--accent); }
   #head h1 { font-size:16px; margin:0; flex:1 1 auto; }
   #titleBlock { display:contents; }
-  .lbl-short { display:none; }
+  .ic { display:block; flex:none; width:20px; height:20px; pointer-events:none; }
+  #back { display:inline-flex; align-items:center; gap:2px; align-self:center; }
+  #back:focus-visible { outline:3px solid #1e6fd9; outline-offset:2px; border-radius:3px; }
   #app { flex:1; display:flex; flex-direction:column; min-height:0; }
   #bar { display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center; padding:8px 12px; background:#fff; border-bottom:1px solid var(--line); }
-  #bar button, #bar select { font:inherit; padding:5px 10px; border:1px solid var(--line); background:#fff; border-radius:5px; cursor:pointer; }
-  #bar button:hover { background:#eef0f2; }
+  #bar button, #bar select { font:inherit; color:var(--fg); border:1px solid var(--line); background:#fff; border-radius:5px; cursor:pointer;
+    transition:background-color .12s, border-color .12s, transform .06s; }
+  #bar select { padding:5px 10px; }
+  #bar button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:38px; padding:0 14px; white-space:nowrap;
+    -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+  #bar .lbl { white-space:nowrap; }
   #bar .group { display:flex; gap:6px; align-items:center; }
-  /* Desktop: the button row and the More panel are transparent wrappers, so their children sit in the bar as before. */
-  #btnRow, #morePanel { display:contents; }
-  #more { display:none; }
+  /* Control order, the same on desktop and phone: previous turn, back, play, next, next turn, then More (phone only). */
+  #prevTurn { order:1; } #prev { order:2; } #play { order:3; } #next { order:4; } #nextTurn { order:5; } #more { order:6; }
+  /* Forward-direction buttons carry their icon on the right of the text (desktop); the phone stacks icon over caption. */
+  #next, #nextTurn { flex-direction:row-reverse; }
+  /* Desktop: the button row, the turn wrapper and the More panel are transparent wrappers, so their children sit in the bar. */
+  #btnRow, #morePanel, #turnBtns { display:contents; }
+  #bar #more { display:none; }
+  /* Play is the primary button; its icon and word follow data-state (play, pause, replay). */
+  #bar #play { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  #play .ic { display:none; }
+  #play[data-state="play"] .ic-play, #play[data-state="pause"] .ic-pause, #play[data-state="replay"] .ic-replay { display:block; }
+  /* States: disabled, hover (pointer devices only), pressed, keyboard focus, More open, current section. */
+  #bar button:disabled { opacity:.4; cursor:not-allowed; }
+  @media (hover:hover) {
+    #bar button:not(:disabled):hover, #bar select:hover { background:#eef0f2; border-color:#b9bfc5; }
+    #bar #play:not(:disabled):hover { background:#c0321a; border-color:#c0321a; }
+    #bar #more[aria-expanded="true"]:hover { background:#3a434c; border-color:#3a434c; }
+  }
+  #bar button:not(:disabled):active { background:#dfe3e6; transform:translateY(1px); }
+  #bar #play:not(:disabled):active { background:#a82b16; border-color:#a82b16; }
+  #bar #more[aria-expanded="true"] { background:#1d2329; border-color:#1d2329; color:#fff; }
+  #bar #more[aria-expanded="true"]:active { background:#3a434c; border-color:#3a434c; }
+  #bar #jumps button[aria-current="true"] { background:#fff1c9; border-color:#ffb300; box-shadow:inset 0 0 0 1px #ffb300; font-weight:600; }
+  #bar button:focus-visible, #bar select:focus-visible, #bar #slider:focus-visible { outline:3px solid #1e6fd9; outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce) {
+    #bar button, #bar select { transition:none; }
+    #bar button:not(:disabled):active { transform:none; }
+  }
   #slider { flex:1 1 220px; min-width:140px; }
   #status { padding:6px 12px; font-size:14px; color:var(--muted); background:#fff; border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:4px 16px; align-items:center; }
   #status strong { color:var(--fg); }
@@ -150,9 +181,9 @@
   @media (max-width:800px), (max-height:480px) and (orientation:landscape) {
     body { overflow:hidden; }
     .lbl-long { display:none; }
-    .lbl-short { display:inline; }
     #head { flex:none; flex-wrap:nowrap; align-items:center; gap:4px; min-height:52px; padding:4px 10px 4px 4px; }
-    #back { flex:none; display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; font-size:26px; line-height:1; text-decoration:none; }
+    #back { flex:none; display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; text-decoration:none; }
+    #back .ic { width:28px; height:28px; }
     #titleBlock { display:block; flex:1 1 auto; min-width:0; }
     #head h1 { font-size:16px; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     /* The status line is a 44 px tall button. Its padding reaches up over the title and 2 px below the text, with matching negative margins, so the header does not grow. */
@@ -185,15 +216,14 @@
     #bar { flex:none; position:relative; z-index:10; flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:6px;
       padding:8px 12px calc(8px + env(safe-area-inset-bottom)); border-bottom:0; border-top:1px solid var(--line); }
     #slider { order:-1; flex:none; width:100%; min-width:0; height:32px; margin:0; accent-color:var(--accent); }
-    #btnRow { display:flex; gap:6px; }
+    /* Six buttons share the row (previous turn, back, play, next, next turn, more): icon over a small caption. */
+    #btnRow { display:flex; gap:5px; }
     #btnRow .group, #turnBtns { display:contents; }
-    #btnRow button { flex:1 1 0; min-width:44px; min-height:48px; padding:0 2px; font-size:14px; line-height:1.1;
-      display:flex; align-items:center; justify-content:center; white-space:nowrap; }
-    #btnRow #play { flex:1.4 1 0; font-size:15px; }
-    #bar #play { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
-    #bar #play:hover { background:#c0321a; }
-    #prevTurn { order:1; } #prev { order:2; } #play { order:3; } #next { order:4; } #nextTurn { order:5; } #more { order:6; }
-    #more { font-size:20px; }
+    #btnRow button { flex:1 1 0; min-width:44px; min-height:48px; padding:0 1px; gap:3px; flex-direction:column; font-size:11px; line-height:1.1; }
+    #btnRow #play { flex:1.1 1 0; }
+    #btnRow .ic { width:22px; height:22px; }
+    #btnRow .lbl { white-space:normal; text-align:center; }
+    #bar #more { display:flex; }
     /* More sheet */
     #morePanel { display:none; position:absolute; left:0; right:0; bottom:100%; z-index:20; flex-direction:column; gap:8px;
       max-height:60vh; overflow:auto; padding:8px 12px; background:#fff; border-top:1px solid var(--line); box-shadow:0 -6px 16px rgba(0,0,0,.18); }
@@ -226,15 +256,22 @@
     #slider { order:0; flex:1 1 0; width:auto; min-width:120px; }
     #btnRow { flex:none; }
     #btnRow button { flex:none; width:52px; min-height:44px; }
-    #btnRow #play { width:64px; }
+    #btnRow #play { flex:none; width:64px; }
+    #btnRow .lbl { display:none; }
   }
+  /* Narrow phones: keep six captions on one line without clipping. */
+  @media (max-width:380px) {
+    #bar { padding-left:8px; padding-right:8px; }
+    #btnRow { gap:4px; }
+  }
+  @media (max-width:340px) { #btnRow button { font-size:10px; } }
 </style>
 </head>
 <body>
 <div id="error"></div>
 <div id="app">
   <div id="head">
-    <a id="back" href="index.html" aria-label="All courses" title="All courses"><span class="lbl-long">&larr; All courses</span><span class="lbl-short">&larr;</span></a>
+    <a id="back" href="index.html" aria-label="All courses" title="All courses"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7"/></svg><span class="lbl-long">All courses</span></a>
     <div id="titleBlock">
       <h1 id="courseName"></h1>
       <div id="status">
@@ -286,16 +323,16 @@
   </div>
   <div id="bar">
     <div id="btnRow">
-      <div class="group">
-        <button id="prev" title="Previous (Left arrow)" aria-label="Previous"><span class="lbl-long">&#9664; Previous</span><span class="lbl-short">&#9664;</span></button>
-        <button id="play" title="Play/Pause (Space)">Play</button>
-        <button id="next" title="Next (Right arrow)" aria-label="Next"><span class="lbl-long">Next &#9654;</span><span class="lbl-short">&#9654;</span></button>
+      <div class="group" id="transport">
+        <div id="turnBtns" style="display:none">
+          <button id="prevTurn" type="button" title="Previous turn (Down arrow)" aria-label="Previous turn"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6 6h2v12H6zM9.5 12l8.5 6V6z"/></svg><span class="lbl">Prev turn</span></button>
+          <button id="nextTurn" type="button" title="Next turn (Up arrow)" aria-label="Next turn"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6 18l8.5-6L6 6zM16 6h2v12h-2z"/></svg><span class="lbl">Next turn</span></button>
+        </div>
+        <button id="prev" type="button" title="Back one step (Left arrow)" aria-label="Back one step"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M18 5v14L6 12z"/></svg><span class="lbl">Back</span></button>
+        <button id="play" type="button" data-state="play" title="Play (Space)" aria-label="Play"><svg class="ic ic-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M7 4.5v15l12.5-7.5z"/></svg><svg class="ic ic-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6.5 5h4v14h-4zM13.5 5h4v14h-4z"/></svg><svg class="ic ic-replay" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg><span class="lbl" id="playLbl">Play</span></button>
+        <button id="next" type="button" title="Next step (Right arrow)" aria-label="Next step"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6 5v14l12-7z"/></svg><span class="lbl">Next</span></button>
       </div>
-      <div class="group" id="turnBtns" style="display:none">
-        <button id="prevTurn" title="Previous turn (Down arrow)" aria-label="Previous turn"><span class="lbl-long">&#9664; Prev turn</span><span class="lbl-short">&#9198; turn</span></button>
-        <button id="nextTurn" title="Next turn (Up arrow)" aria-label="Next turn"><span class="lbl-long">Next turn &#9654;</span><span class="lbl-short">turn &#9197;</span></button>
-      </div>
-      <button id="more" type="button" aria-expanded="false" aria-controls="morePanel" aria-label="More controls" title="More: speed, sections, links">&#8943;</button>
+      <button id="more" type="button" aria-expanded="false" aria-controls="morePanel" aria-label="More controls" title="More: speed, sections, links"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="2.2"/><circle cx="12" cy="12" r="2.2"/><circle cx="19" cy="12" r="2.2"/></svg><span class="lbl">More</span></button>
     </div>
     <input id="slider" type="range" min="0" max="0" value="0" step="1" aria-label="Position along course">
     <div id="morePanel">
@@ -642,14 +679,19 @@ function boot(C, slug) {
     if (ev.altKey || ev.ctrlKey || ev.metaKey) return;
     if (ev.key === 'Enter' || ev.key === ' ' || ev.code === 'Space') { ev.preventDefault(); ev.stopPropagation(); goBannerTurn(); }
   });
-  function jumpNextTurn() {
-    var dist = points[index]._d;
-    for (var i = 0; i < turns.length; i++) { var vi = viewIdxBefore(turns[i].d); if (vi > index) { setIndex(vi); return; } }
+  // The view point each turn jump lands on (viewIdxBefore: the junction just before the turn). Turns and view points never
+  // change, so this is computed once. turnJumpIdx is the single rule for whether a turn jump exists and where it goes:
+  // dir 1 = the first turn whose view point is ahead of the current one, dir -1 = the last whose view point is behind it,
+  // -1 when there is none. The turn buttons, their disabled state and the Up and Down keys all use it.
+  var turnVI = turns.map(function (t) { return viewIdxBefore(t.d); });
+  function turnJumpIdx(dir) {
+    var i;
+    if (dir > 0) { for (i = 0; i < turnVI.length; i++) if (turnVI[i] > index) return turnVI[i]; }
+    else { for (i = turnVI.length - 1; i >= 0; i--) if (turnVI[i] < index) return turnVI[i]; }
+    return -1;
   }
-  function jumpPrevTurn() {
-    var dist = points[index]._d;
-    for (var i = turns.length - 1; i >= 0; i--) { var vi = viewIdxBefore(turns[i].d); if (vi < index) { setIndex(vi); return; } }
-  }
+  function jumpNextTurn() { var vi = turnJumpIdx(1); if (vi >= 0) setIndex(vi); }
+  function jumpPrevTurn() { var vi = turnJumpIdx(-1); if (vi >= 0) setIndex(vi); }
   if (turns.length) $('turnBtns').style.display = '';
   $('nextTurn').addEventListener('click', jumpNextTurn);
   $('prevTurn').addEventListener('click', jumpPrevTurn);
@@ -661,6 +703,37 @@ function boot(C, slug) {
     sv.src = 'https://www.google.com/maps/embed?origin=mfe&pb=!6m7!1m6!2m2!1d' + p.lat.toFixed(6) +
       '!2d' + p.lon.toFixed(6) + '!3f' + Math.round(p.heading) + '!4f-0!5f1';
   }
+  // Control states: disabled step and turn buttons, the Play / Pause / Replay face, the current section button.
+  // A button that is focused when it becomes disabled would lose its keyboard events, so focus moves to Play,
+  // which is the natural next action; the arrow keys and Space keep working from there.
+  function setDisabled(btn, off) {
+    if (btn.disabled === off) return;
+    btn.disabled = off;
+    if (off && document.activeElement === btn) { try { playBtn.focus({ preventScroll: true }); } catch (e) { playBtn.focus(); } }
+  }
+  var PLAY_FACE = { play: ['Play', 'Play (Space)'], pause: ['Pause', 'Pause (Space)'], replay: ['Replay', 'Replay from the start (Space)'] };
+  function syncPlay() {
+    var st = timer ? 'pause' : (index >= points.length - 1 ? 'replay' : 'play');
+    if (playBtn.getAttribute('data-state') === st) return;
+    var f = PLAY_FACE[st];
+    playBtn.setAttribute('data-state', st);
+    $('playLbl').textContent = f[0];
+    playBtn.setAttribute('aria-label', st === 'replay' ? 'Replay from the start' : f[0]);
+    playBtn.title = f[1];
+  }
+  function syncControls() {
+    setDisabled($('prev'), index <= 0);
+    setDisabled($('next'), index >= points.length - 1);
+    setDisabled($('prevTurn'), turnJumpIdx(-1) < 0);
+    setDisabled($('nextTurn'), turnJumpIdx(1) < 0);
+    syncPlay();
+    var sec = points[index].section;
+    if (sec !== jumpCurrent) {
+      if (jumpBtns[jumpCurrent]) jumpBtns[jumpCurrent].removeAttribute('aria-current');
+      if (jumpBtns[sec]) jumpBtns[sec].setAttribute('aria-current', 'true');
+      jumpCurrent = sec;
+    }
+  }
   function render() {
     var p = points[index];
     slider.value = index;
@@ -670,6 +743,7 @@ function boot(C, slug) {
     $('gmaps').href = 'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' +
       p.lat.toFixed(6) + ',' + p.lon.toFixed(6) + '&heading=' + Math.round(p.heading);
     renderTurns();
+    syncControls();
     curMarker.setLatLng([p.lat, p.lon]);
     curMarker.setIcon(curIcon(Math.round(p.heading)));
     ridden.setLatLngs(riddenLine(index));
@@ -725,16 +799,16 @@ function boot(C, slug) {
 
   // ---- play ----
   function stepMs() { return parseInt($('speed').value, 10) || 2500; }
-  function stop() { clearInterval(timer); timer = null; playBtn.textContent = 'Play'; }
+  function stop() { clearInterval(timer); timer = null; syncPlay(); }
   function start() {
     if (index >= points.length - 1) setIndex(0);
-    playBtn.textContent = 'Pause';
     clearInterval(timer);
     timer = setInterval(function () {
       if (index >= points.length - 1) { stop(); return; }
       setIndex(index + 1);
       if (index >= points.length - 1) stop();
     }, stepMs());
+    syncPlay();
   }
   function toggle() { if (timer) stop(); else start(); }
 
@@ -744,14 +818,16 @@ function boot(C, slug) {
   $('speed').addEventListener('change', function () { if (timer) start(); });
   slider.addEventListener('input', function () { setIndex(slider.value); });
 
-  var jumps = $('jumps'), seen = {};
+  var jumps = $('jumps'), seen = {}, jumpBtns = {}, jumpCurrent = null;
   points.forEach(function (p, i) {
     if (seen[p.section] !== undefined) return;
     seen[p.section] = i;
     var label = jumpDefs[pieceNames.indexOf(p.section)];
     var b = document.createElement('button');
     b.textContent = label;
+    b.type = 'button';
     b.title = 'Jump to ' + p.section;
+    jumpBtns[p.section] = b;
     b.addEventListener('click', function () { setIndex(i); setMore(false); });
     jumps.appendChild(b);
   });
@@ -841,7 +917,7 @@ function boot(C, slug) {
     else if (ev.key === 'ArrowUp') { ev.preventDefault(); jumpNextTurn(); }
     else if (ev.key === 'ArrowDown') { ev.preventDefault(); jumpPrevTurn(); }
     else if (ev.key === ' ' || ev.code === 'Space') {
-      if (tag === 'BUTTON' || tag === 'SELECT' || tag === 'A' || (t && t.getAttribute && t.getAttribute('role') === 'button')) return; // let focused controls act on Space
+      if ((tag === 'BUTTON' && !t.disabled) || tag === 'SELECT' || tag === 'A' || (t && t.getAttribute && t.getAttribute('role') === 'button')) return; // let focused controls act on Space
       ev.preventDefault(); toggle();
     }
   });
