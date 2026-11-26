@@ -156,6 +156,7 @@
       stats.appendChild(stat(c.km.toFixed(1) + ' km', 'Distance'));
     }
     if (typeof c.ascentM === 'number') stats.appendChild(stat(c.ascentM + ' m', 'Climb'));
+    if (typeof c.unpavedM === 'number') stats.appendChild(stat(Math.max(0, Math.min(100, Math.round(100 * (c.unpavedM / 1000) / c.km))) + '%', 'Unpaved'));
     if (typeof c.km === 'number') stats.appendChild(stat(rideTime(c.km), 'Ride time at 15 km/h'));
     if (typeof c.turns === 'number') stats.appendChild(stat(String(c.turns), 'Turns'));
     if (stats.children.length) body.appendChild(stats);

@@ -46,6 +46,70 @@ def sd(a, b):
     return (b - a + 180) % 360 - 180
 
 
+# ------------------------------------------------- climb and surface
+def climb_m(elevations, threshold_m=2.0):
+    """Total climb in metres from an elevation profile (hysteresis sum).
+
+    A rise only counts once it reaches threshold_m above the reference height;
+    the reference then moves up to that point. A drop of threshold_m or more
+    moves the reference down without counting. Missing (None) values are skipped.
+    """
+    vals = [v for v in elevations if v is not None]
+    if len(vals) < 2:
+        return 0.0
+    ref = vals[0]
+    total = 0.0
+    for x in vals[1:]:
+        if x - ref >= threshold_m:
+            total += x - ref
+            ref = x
+        elif ref - x >= threshold_m:
+            ref = x
+    return float(total)
+
+
+UNPAVED_SURFACES = {"unpaved", "gravel", "fine_gravel", "compacted", "dirt", "earth", "ground",
+                    "grass", "sand", "mud", "pebblestone", "rock", "woodchips"}
+
+
+def is_unpaved(tags):
+    """True when a way (dict of OSM tags) counts as unpaved.
+
+    An explicit surface tag decides. With no surface tag only highway=track and
+    highway=path count as unpaved; any other untagged road counts as paved.
+    """
+    surface = tags.get("surface")
+    if surface:
+        return surface in UNPAVED_SURFACES
+    return tags.get("highway") in ("track", "path")
+
+
+def unpaved_m(messages):
+    """Metres of unpaved route in BRouter's geojson "messages" table.
+
+    The first row is the header; columns are looked up by name. An empty or
+    missing table gives 0.0.
+    """
+    if not messages:
+        return 0.0
+    header = messages[0]
+    if "Distance" not in header or "WayTags" not in header:
+        fail("BRouter messages table has no Distance/WayTags columns (header: %s)" % (header,))
+    di, wi = header.index("Distance"), header.index("WayTags")
+    total = 0.0
+    for row in messages[1:]:
+        tags = {}
+        for pair in str(row[wi]).split():
+            k, _, v = pair.partition("=")
+            tags[k] = v
+        if is_unpaved(tags):
+            try:
+                total += float(row[di])
+            except (TypeError, ValueError):
+                fail("BRouter messages row has a bad Distance value: %r" % (row[di],))
+    return total
+
+
 # ---------------------------------------------------------------- routing
 def route(waypoints, profile):
     lonlats = "%7C".join("%s,%s" % (w[1], w[0]) for w in waypoints)
@@ -56,10 +120,7 @@ def route(waypoints, profile):
             data = json.loads(r.read().decode("utf-8"))
         coords = data["features"][0]["geometry"]["coordinates"]
         props = data["features"][0].get("properties", {})
-        try:
-            ascent = float(props.get("filtered ascend", 0))
-        except (TypeError, ValueError):
-            ascent = 0.0
+        messages = props.get("messages")
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", "replace")[:200]
         fail("BRouter returned HTTP %s for %s: %s" % (e.code, url, body))
@@ -67,24 +128,29 @@ def route(waypoints, profile):
         fail("BRouter request failed (%s: %s) for %s" % (type(e).__name__, e, url))
     if len(coords) < 2:
         fail("BRouter returned an empty route for %s" % url)
-    return coords, ascent  # coords are [lon, lat, ele]; ascent is BRouter "filtered ascend" in metres
+    # coords are [lon, lat, ele]; unpaved is the metres of unpaved sections for one pass
+    return coords, unpaved_m(messages)
 
 
 def build_pieces(cfg):
-    """Return (pieces, full, ascent_m) where pieces are per-segment [lon,lat,ele] lists,
-    full is the expanded course (repeats applied, duplicate joins skipped) and
-    ascent_m is the total climb (BRouter "filtered ascend" x repeat, summed)."""
+    """Return (pieces, full, ascent_m, unpaved_metres) where pieces are per-segment
+    [lon,lat,ele] lists, full is the expanded course (repeats applied, duplicate joins
+    skipped), ascent_m is the climb of the elevation profile of full, and unpaved_metres
+    is the unpaved distance summed over segments times their repeat."""
     pieces = []
-    ascent = 0.0
+    unpaved = 0.0
     for s in cfg["segments"]:
-        coords, a = route(s["waypoints"], cfg["profile"])
+        coords, u = route(s["waypoints"], cfg["profile"])
         pieces.append(coords)
-        ascent += a * int(s.get("repeat", 1))
+        unpaved += u * int(s.get("repeat", 1))
     full = []
     for s, pts in zip(cfg["segments"], pieces):
         for _ in range(int(s.get("repeat", 1))):
             full.extend(pts if not full else pts[1:])
-    return pieces, full, int(round(ascent))
+    elevations = [p[2] for p in full if len(p) > 2 and p[2] is not None]
+    if not elevations:
+        fail("BRouter returned no elevation values for this route; cannot compute the climb")
+    return pieces, full, int(round(climb_m(elevations))), int(round(unpaved))
 
 
 # -------------------------------------------------------------------- GPX
@@ -260,6 +326,8 @@ def write_index(root):
             entry["added"] = added
         if "ascentM" in data:  # stored in course-data.js so the index needs no re-routing
             entry["ascentM"] = int(data["ascentM"])
+        if "unpavedM" in data:
+            entry["unpavedM"] = int(data["unpavedM"])
         entry["turns"] = len(data.get("turns", []))
         entry["stops"] = cfg.get("stops", [])
         entry["sections"] = [
@@ -300,7 +368,7 @@ def main():
     if cfg["slug"] != os.path.basename(folder):
         fail("slug '%s' does not match folder '%s'" % (cfg["slug"], os.path.basename(folder)))
 
-    pieces, full, ascent_m = build_pieces(cfg)
+    pieces, full, ascent_m, unpaved_metres = build_pieces(cfg)
 
     latlon = [[p[1], p[0]] for p in full]
     RB = [tuple(r) for r in cfg.get("roundabouts", [])]
@@ -328,6 +396,7 @@ def main():
         "gpx": cfg["gpx"],
         "totalM": round(total),
         "ascentM": ascent_m,
+        "unpavedM": unpaved_metres,
         "segments": [
             {"label": s["label"], "repeat": int(s.get("repeat", 1)),
              "points": [[round(p[1], 6), round(p[0], 6)] for p in pts]}
@@ -341,7 +410,8 @@ def main():
                 "turns[].d is metres from the start along the full course.\n"
                 "window.COURSE = " + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n")
     write_index(root)
-    print("%s: %d m, %d points, %d turns, %d m climb" % (cfg["slug"], round(total), len(full), len(turns), ascent_m))
+    print("%s: %d m, %d points, %d turns, %d m climb, %d m unpaved"
+          % (cfg["slug"], round(total), len(full), len(turns), ascent_m, unpaved_metres))
 
 
 if __name__ == "__main__":

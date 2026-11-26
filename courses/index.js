@@ -7,7 +7,8 @@ window.COURSES = [
     "km": 31.6,
     "gpx": "courses/citragarden-situ-cisawang/citragarden-situ-cisawang.gpx",
     "added": "2026-11-26",
-    "ascentM": 110,
+    "ascentM": 229,
+    "unpavedM": 2499,
     "turns": 85,
     "stops": [
       [
@@ -1037,7 +1038,8 @@ window.COURSES = [
     "km": 18.5,
     "gpx": "courses/citragarden-3-laps-danau-abah/citragarden-3-laps-danau-abah.gpx",
     "added": "2026-11-25",
-    "ascentM": 27,
+    "ascentM": 50,
+    "unpavedM": 0,
     "turns": 31,
     "stops": [
       [
@@ -1429,7 +1431,8 @@ window.COURSES = [
     "km": 19.9,
     "gpx": "courses/aeris-3-laps-lake/aeris-3-laps-lake-gravel.gpx",
     "added": "2026-11-20",
-    "ascentM": 32,
+    "ascentM": 66,
+    "unpavedM": 0,
     "turns": 43,
     "stops": [
       [

@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-11-26: The climb figure is now computed from the course's elevation profile instead of BRouter's smoothed estimate, so it is closer to what Garmin Connect shows, and each course card also shows the unpaved share of the route.
 - 2026-11-26: New course, CitraGarden Lap + Situ Cisawang (31.6 km, 110 m climb): one end-to-end lap of Jalan CitraGarden Serpong, then a loop out through Kampung Ekowisata Keranggan to Situ Cisawang and home past Danau Suradita and Danau Abah.
 - 2026-11-26: The course list now shows the newest course first. Each course.json can set `added` (`YYYY-MM-DD`); courses without it come last, ordered by name. The viewer's default course is now the newest one.
 - 2026-11-25: New course, CitraGarden 3 Laps + Danau Abah (18.5 km), starting and finishing at the same roundabout as the Aeris course: three end-to-end laps of Jalan CitraGarden Serpong between the Kuburan Cina turning circle and the Patung Kuda gate, then out to Danau Abah and back.

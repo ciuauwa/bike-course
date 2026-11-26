@@ -70,6 +70,7 @@ for (const entry of Array.isArray(courses) ? courses : []) {
   }
   if (entry.turns !== turns.length) err(`${tag} index turns ${entry.turns} != ${turns.length} in course-data.js`);
   if (!Number.isInteger(entry.ascentM) || entry.ascentM < 0) err(`${tag} ascentM must be a non-negative integer`);
+  if ('unpavedM' in entry && (!Number.isInteger(entry.unpavedM) || entry.unpavedM < 0 || entry.unpavedM > entry.km * 1000 + 50)) err(`${tag} unpavedM must be a non-negative integer of at most km * 1000 + 50`);
   if (!Array.isArray(entry.stops)) err(`${tag} stops is not an array`);
   lines.push(`${slug}: ${C.totalM} m, ${full.length} points, ${turns.length} turns, ${entry.km} km`);
 }
