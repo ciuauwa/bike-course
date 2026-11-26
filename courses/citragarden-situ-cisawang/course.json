@@ -1,16 +1,16 @@
 {
-  "slug": "citragarden-3-laps-situ-cisawang",
+  "slug": "citragarden-situ-cisawang",
   "added": "2026-11-26",
-  "name": "CitraGarden 3 Laps + Situ Cisawang",
-  "description": "Three end-to-end laps of Jalan CitraGarden Serpong, then a long loop: south to Danau Abah and Danau Suradita, on to Situ Cisawang, and home through Kampung Ekowisata Keranggan.",
+  "name": "CitraGarden Lap + Situ Cisawang",
+  "description": "One end-to-end lap of Jalan CitraGarden Serpong, then a long loop: south to Danau Abah and Danau Suradita, on to Situ Cisawang, and home through Kampung Ekowisata Keranggan.",
   "difficulty": "Long, some climbing",
-  "gpx": "citragarden-3-laps-situ-cisawang.gpx",
+  "gpx": "citragarden-situ-cisawang.gpx",
   "activity": "gravel_cycling",
   "profile": "trekking",
   "segments": [
     {
       "label": "Lap",
-      "repeat": 3,
+      "repeat": 1,
       "waypoints": [
         [
           -6.329311,

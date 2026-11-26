@@ -1,6 +1,6 @@
 # Changelog
 
-- 2026-11-26: New course, CitraGarden 3 Laps + Situ Cisawang (39.6 km, 120 m climb): the same three laps of Jalan CitraGarden Serpong, then a loop past Danau Abah, Danau Suradita, Situ Cisawang and Kampung Ekowisata Keranggan.
+- 2026-11-26: New course, CitraGarden Lap + Situ Cisawang (31.9 km, 110 m climb): one end-to-end lap of Jalan CitraGarden Serpong, then a loop past Danau Abah, Danau Suradita, Situ Cisawang and Kampung Ekowisata Keranggan.
 - 2026-11-26: The course list now shows the newest course first. Each course.json can set `added` (`YYYY-MM-DD`); courses without it come last, ordered by name. The viewer's default course is now the newest one.
 - 2026-11-25: New course, CitraGarden 3 Laps + Danau Abah (18.5 km), starting and finishing at the same roundabout as the Aeris course: three end-to-end laps of Jalan CitraGarden Serpong between the Kuburan Cina turning circle and the Patung Kuda gate, then out to Danau Abah and back.
 - 2026-11-22: In the Street View viewer, tapping the turn banner now goes to the turn it shows, and the header status line (section, km, turn counter) opens a Course outline sheet listing every turn by lap, where tapping a row jumps to that turn.
