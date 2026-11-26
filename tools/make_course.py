@@ -84,30 +84,90 @@ def is_unpaved(tags):
     return tags.get("highway") in ("track", "path")
 
 
-def unpaved_m(messages):
-    """Metres of unpaved route in BRouter's geojson "messages" table.
+def _ways(messages):
+    """Yield (tags, raw_distance) for each way row of BRouter's geojson "messages" table.
 
     The first row is the header; columns are looked up by name. An empty or
-    missing table gives 0.0.
+    missing table yields nothing.
     """
     if not messages:
-        return 0.0
+        return
     header = messages[0]
     if "Distance" not in header or "WayTags" not in header:
         fail("BRouter messages table has no Distance/WayTags columns (header: %s)" % (header,))
     di, wi = header.index("Distance"), header.index("WayTags")
-    total = 0.0
     for row in messages[1:]:
         tags = {}
         for pair in str(row[wi]).split():
             k, _, v = pair.partition("=")
             tags[k] = v
-        if is_unpaved(tags):
-            try:
-                total += float(row[di])
-            except (TypeError, ValueError):
-                fail("BRouter messages row has a bad Distance value: %r" % (row[di],))
-    return total
+        yield tags, row[di]
+
+
+def _metres(raw):
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        fail("BRouter messages row has a bad Distance value: %r" % (raw,))
+
+
+def unpaved_m(messages):
+    """Metres of unpaved route in BRouter's geojson "messages" table (0.0 when empty)."""
+    return sum(_metres(d) for tags, d in _ways(messages) if is_unpaved(tags))
+
+
+MAIN_ROADS = {"trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link"}
+
+
+def main_road_m(messages):
+    """Metres of the route on main roads (highway = trunk, primary or secondary, links included)."""
+    return sum(_metres(d) for tags, d in _ways(messages) if tags.get("highway") in MAIN_ROADS)
+
+
+def max_grade_pct(dist_m, ele, window_m=100.0):
+    """Steepest uphill grade in percent over any stretch of at least window_m metres.
+
+    dist_m is the cumulative distance per point (non-decreasing), ele the elevation per point.
+    For each point the stretch ends at the first later point that is window_m or more away,
+    so a short spike cannot read as a steep wall. Returns 0.0 when no stretch fits or none climbs.
+    """
+    best = 0.0
+    j = 0
+    n = len(dist_m)
+    for i in range(n):
+        if j <= i:
+            j = i + 1
+        while j < n and dist_m[j] - dist_m[i] < window_m:
+            j += 1
+        if j >= n:
+            break
+        g = (ele[j] - ele[i]) / (dist_m[j] - dist_m[i]) * 100
+        if g > best:
+            best = g
+    return float(best)
+
+
+def elevation_profile(dist_m, ele, max_points=120):
+    """Down-sample an elevation profile to at most max_points [km, ele_m] pairs.
+
+    Always keeps the first, last, highest and lowest point; the rest are picked at
+    even distance spacing. Output is sorted by km.
+    """
+    n = len(dist_m)
+    if n <= max_points:
+        keep = list(range(n))
+    else:
+        must = {0, n - 1, max(range(n), key=ele.__getitem__), min(range(n), key=ele.__getitem__)}
+        keep = set(must)
+        budget = max_points - len(must)
+        for k in range(1, budget + 1):
+            target = dist_m[-1] * k / (budget + 1)
+            i = bisect.bisect_left(dist_m, target)
+            if i > 0 and (i >= n or target - dist_m[i - 1] <= dist_m[i] - target):
+                i -= 1
+            keep.add(i)
+        keep = sorted(keep)
+    return [[round(dist_m[i] / 1000, 2), int(round(ele[i]))] for i in keep]
 
 
 # ---------------------------------------------------------------- routing
@@ -128,29 +188,45 @@ def route(waypoints, profile):
         fail("BRouter request failed (%s: %s) for %s" % (type(e).__name__, e, url))
     if len(coords) < 2:
         fail("BRouter returned an empty route for %s" % url)
-    # coords are [lon, lat, ele]; unpaved is the metres of unpaved sections for one pass
-    return coords, unpaved_m(messages)
+    # coords are [lon, lat, ele]; messages is BRouter's way-tag table for one pass (may be None)
+    return coords, messages
 
 
 def build_pieces(cfg):
-    """Return (pieces, full, ascent_m, unpaved_metres) where pieces are per-segment
-    [lon,lat,ele] lists, full is the expanded course (repeats applied, duplicate joins
-    skipped), ascent_m is the climb of the elevation profile of full, and unpaved_metres
-    is the unpaved distance summed over segments times their repeat."""
+    """Return (pieces, full, figures). pieces are per-segment [lon,lat,ele] lists, full is the
+    expanded course (repeats applied, duplicate joins skipped). figures holds ascent_m, the climb
+    of the elevation profile of full; unpaved_m and main_road_m, the metres summed over segments
+    times their repeat; max_ele_m, min_ele_m, max_grade_pct and the elevation profile."""
     pieces = []
-    unpaved = 0.0
+    unpaved = main_road = 0.0
     for s in cfg["segments"]:
-        coords, u = route(s["waypoints"], cfg["profile"])
+        coords, messages = route(s["waypoints"], cfg["profile"])
         pieces.append(coords)
-        unpaved += u * int(s.get("repeat", 1))
+        repeat = int(s.get("repeat", 1))
+        unpaved += unpaved_m(messages) * repeat
+        main_road += main_road_m(messages) * repeat
     full = []
     for s, pts in zip(cfg["segments"], pieces):
         for _ in range(int(s.get("repeat", 1))):
             full.extend(pts if not full else pts[1:])
-    elevations = [p[2] for p in full if len(p) > 2 and p[2] is not None]
-    if not elevations:
+    with_ele = [p for p in full if len(p) > 2 and p[2] is not None]
+    if not with_ele:
         fail("BRouter returned no elevation values for this route; cannot compute the climb")
-    return pieces, full, int(round(climb_m(elevations))), int(round(unpaved))
+    dist = [0.0]
+    for a, b in zip(full, full[1:]):
+        dist.append(dist[-1] + hav((a[1], a[0]), (b[1], b[0])))
+    dist_e = [d for d, p in zip(dist, full) if len(p) > 2 and p[2] is not None]
+    ele = [p[2] for p in with_ele]
+    figures = {
+        "ascent_m": int(round(climb_m(ele))),
+        "unpaved_m": int(round(unpaved)),
+        "main_road_m": int(round(main_road)),
+        "max_ele_m": int(round(max(ele))),
+        "min_ele_m": int(round(min(ele))),
+        "max_grade_pct": round(max_grade_pct(dist_e, ele), 1),
+        "profile": elevation_profile(dist_e, ele),
+    }
+    return pieces, full, figures
 
 
 # -------------------------------------------------------------------- GPX
@@ -328,6 +404,13 @@ def write_index(root):
             entry["ascentM"] = int(data["ascentM"])
         if "unpavedM" in data:
             entry["unpavedM"] = int(data["unpavedM"])
+        for k in ("maxEleM", "minEleM", "mainRoadM"):
+            if k in data:
+                entry[k] = int(data[k])
+        if "maxGradePct" in data:
+            entry["maxGradePct"] = float(data["maxGradePct"])
+        if "profile" in data:
+            entry["profile"] = data["profile"]
         entry["turns"] = len(data.get("turns", []))
         entry["stops"] = cfg.get("stops", [])
         entry["sections"] = [
@@ -368,7 +451,7 @@ def main():
     if cfg["slug"] != os.path.basename(folder):
         fail("slug '%s' does not match folder '%s'" % (cfg["slug"], os.path.basename(folder)))
 
-    pieces, full, ascent_m, unpaved_metres = build_pieces(cfg)
+    pieces, full, figures = build_pieces(cfg)
 
     latlon = [[p[1], p[0]] for p in full]
     RB = [tuple(r) for r in cfg.get("roundabouts", [])]
@@ -395,8 +478,13 @@ def main():
         "description": cfg.get("description", ""),
         "gpx": cfg["gpx"],
         "totalM": round(total),
-        "ascentM": ascent_m,
-        "unpavedM": unpaved_metres,
+        "ascentM": figures["ascent_m"],
+        "unpavedM": figures["unpaved_m"],
+        "maxEleM": figures["max_ele_m"],
+        "minEleM": figures["min_ele_m"],
+        "maxGradePct": figures["max_grade_pct"],
+        "mainRoadM": figures["main_road_m"],
+        "profile": figures["profile"],
         "segments": [
             {"label": s["label"], "repeat": int(s.get("repeat", 1)),
              "points": [[round(p[1], 6), round(p[0], 6)] for p in pts]}
@@ -410,8 +498,9 @@ def main():
                 "turns[].d is metres from the start along the full course.\n"
                 "window.COURSE = " + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n")
     write_index(root)
-    print("%s: %d m, %d points, %d turns, %d m climb, %d m unpaved"
-          % (cfg["slug"], round(total), len(full), len(turns), ascent_m, unpaved_metres))
+    print("%s: %d m, %d points, %d turns, %d m climb, %d m unpaved, max %d m, steepest %.1f%%, %d m main roads"
+          % (cfg["slug"], round(total), len(full), len(turns), figures["ascent_m"], figures["unpaved_m"],
+             figures["max_ele_m"], figures["max_grade_pct"], figures["main_road_m"]))
 
 
 if __name__ == "__main__":

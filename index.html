@@ -35,9 +35,14 @@
   .body { padding:16px; min-width:0; }
   .card h2 { font-size:18px; margin:0 0 6px; }
   .card p { margin:0 0 12px; color:var(--muted); line-height:1.4; }
-  .stats { display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin:0 0 12px; }
+  .stats { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; margin:0 0 12px; }
   .stat .v { font-size:18px; font-weight:700; line-height:1.2; }
   .stat .l { font-size:12px; color:var(--muted); margin-top:2px; }
+  .elev { margin:0 0 12px; }
+  .elev-chart { display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:6px; font-size:11px; line-height:1; color:var(--muted); }
+  .elev-y { display:flex; flex-direction:column; justify-content:space-between; text-align:right; height:64px; }
+  .elev-chart svg { display:block; width:100%; height:64px; }
+  .elev-x { grid-column:2; text-align:right; margin-top:4px; }
   .tags { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; }
   .tag { font-size:12px; padding:3px 10px; border-radius:999px; background:#eef0f2; color:var(--fg); border:1px solid var(--line); }
   .route { font-size:14px; margin:0 0 12px; line-height:1.4; }
@@ -58,7 +63,7 @@
     .card.has-thumb .thumb { height:auto; min-height:220px; }
   }
   @media (max-width:480px) {
-    .stats { grid-template-columns:repeat(2, 1fr); }
+    .stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
     .links a { justify-content:center; text-align:center; }
     .links a.primary { flex:1 1 100%; }
   }
@@ -100,6 +105,46 @@
     d.appendChild(el('div', 'v', value));
     d.appendChild(el('div', 'l', label));
     return d;
+  }
+  var SVGNS = 'http://www.w3.org/2000/svg', ROUTE_BLUE = '#1e6fd9';
+  function svgEl(tag, attrs) {
+    var e = document.createElementNS(SVGNS, tag);
+    Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    return e;
+  }
+  function isEle(p) { return Array.isArray(p) && p.length === 2 && isFinite(p[0]) && isFinite(p[1]); }
+  function elevationChart(c) {
+    var pr = c.profile;
+    if (!Array.isArray(pr) || pr.length < 2 || !pr.every(isEle)) return null;
+    var eles = pr.map(function (p) { return p[1]; });
+    var lo = typeof c.minEleM === 'number' ? c.minEleM : Math.min.apply(null, eles);
+    var hi = typeof c.maxEleM === 'number' ? c.maxEleM : Math.max.apply(null, eles);
+    var endKm = typeof c.km === 'number' ? c.km : pr[pr.length - 1][0];
+    var W = 100, H = 64, PAD = 4, span = Math.max(hi - lo, 1), totalKm = Math.max(pr[pr.length - 1][0], 0.01);
+    var pts = pr.map(function (p) {
+      var y = Math.max(PAD, Math.min(H - PAD, H - PAD - (p[1] - lo) / span * (H - 2 * PAD)));
+      return (p[0] / totalKm * W).toFixed(2) + ' ' + y.toFixed(2);
+    });
+    var line = 'M' + pts.join(' L');
+    var label = 'Elevation profile: ' + lo + ' m to ' + hi + ' m over ' + endKm.toFixed(1) + ' km';
+    var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', role: 'img', 'aria-label': label });
+    svg.appendChild(svgEl('path', { d: line + ' L' + W + ' ' + H + ' L0 ' + H + ' Z', fill: ROUTE_BLUE, 'fill-opacity': '0.18', stroke: 'none' }));
+    svg.appendChild(svgEl('path', { d: line, fill: 'none', stroke: ROUTE_BLUE, 'stroke-width': '1.5', 'stroke-linejoin': 'round',
+      'vector-effect': 'non-scaling-stroke' }));
+    var wrap = el('div', 'elev');
+    wrap.appendChild(el('div', 'stops-h', 'Elevation'));
+    var chart = el('div', 'elev-chart');
+    var y = el('div', 'elev-y');
+    y.setAttribute('aria-hidden', 'true');
+    y.appendChild(el('span', '', hi + ' m'));
+    y.appendChild(el('span', '', lo + ' m'));
+    chart.appendChild(y);
+    chart.appendChild(svg);
+    var x = el('div', 'elev-x', endKm.toFixed(1) + ' km');
+    x.setAttribute('aria-hidden', 'true');
+    chart.appendChild(x);
+    wrap.appendChild(chart);
+    return wrap;
   }
   function isPt(p) { return Array.isArray(p) && p.length === 2 && isFinite(p[0]) && isFinite(p[1]); }
   function addMap(box, c) {
@@ -156,10 +201,15 @@
       stats.appendChild(stat(c.km.toFixed(1) + ' km', 'Distance'));
     }
     if (typeof c.ascentM === 'number') stats.appendChild(stat(c.ascentM + ' m', 'Climb'));
+    if (typeof c.maxEleM === 'number') stats.appendChild(stat(c.maxEleM + ' m', 'Highest point'));
+    if (typeof c.maxGradePct === 'number') stats.appendChild(stat(Math.round(c.maxGradePct) + '%', 'Steepest (100 m)'));
     if (typeof c.unpavedM === 'number') stats.appendChild(stat(Math.max(0, Math.min(100, Math.round(100 * (c.unpavedM / 1000) / c.km))) + '%', 'Unpaved'));
+    if (typeof c.mainRoadM === 'number') stats.appendChild(stat(Math.max(0, Math.min(100, Math.round(100 * (c.mainRoadM / 1000) / c.km))) + '%', 'Main roads'));
     if (typeof c.km === 'number') stats.appendChild(stat(rideTime(c.km), 'Ride time at 15 km/h'));
     if (typeof c.turns === 'number') stats.appendChild(stat(String(c.turns), 'Turns'));
     if (stats.children.length) body.appendChild(stats);
+    var chart = elevationChart(c);
+    if (chart) body.appendChild(chart);
     var tagVals = [c.surface, c.difficulty].filter(Boolean);
     if (tagVals.length) {
       var tags = el('div', 'tags');

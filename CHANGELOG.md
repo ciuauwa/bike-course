@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-11-26: Each course card now shows an elevation profile chart, the highest point, the steepest gradient (over 100 m, uphill only) and the share of the route on main roads. Rebuild a course with tools/make_course.py to get the new figures.
 - 2026-11-26: The climb figure is now computed from the course's elevation profile instead of BRouter's smoothed estimate, so it is closer to what Garmin Connect shows, and each course card also shows the unpaved share of the route.
 - 2026-11-26: New course, CitraGarden Lap + Situ Cisawang (31.6 km, 110 m climb): one end-to-end lap of Jalan CitraGarden Serpong, then a loop out through Kampung Ekowisata Keranggan to Situ Cisawang and home past Danau Suradita and Danau Abah.
 - 2026-11-26: The course list now shows the newest course first. Each course.json can set `added` (`YYYY-MM-DD`); courses without it come last, ordered by name. The viewer's default course is now the newest one.

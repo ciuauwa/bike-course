@@ -71,6 +71,19 @@ for (const entry of Array.isArray(courses) ? courses : []) {
   if (entry.turns !== turns.length) err(`${tag} index turns ${entry.turns} != ${turns.length} in course-data.js`);
   if (!Number.isInteger(entry.ascentM) || entry.ascentM < 0) err(`${tag} ascentM must be a non-negative integer`);
   if ('unpavedM' in entry && (!Number.isInteger(entry.unpavedM) || entry.unpavedM < 0 || entry.unpavedM > entry.km * 1000 + 50)) err(`${tag} unpavedM must be a non-negative integer of at most km * 1000 + 50`);
+  for (const k of ['maxEleM', 'minEleM']) if (k in entry && !Number.isInteger(entry[k])) err(`${tag} ${k} must be an integer`);
+  if (Number.isInteger(entry.maxEleM) && Number.isInteger(entry.minEleM) && entry.minEleM > entry.maxEleM) err(`${tag} minEleM ${entry.minEleM} is above maxEleM ${entry.maxEleM}`);
+  if ('maxGradePct' in entry && !(Number.isFinite(entry.maxGradePct) && entry.maxGradePct >= 0 && entry.maxGradePct <= 40)) err(`${tag} maxGradePct must be a number from 0 to 40`);
+  if ('mainRoadM' in entry && (!Number.isInteger(entry.mainRoadM) || entry.mainRoadM < 0 || entry.mainRoadM > entry.km * 1000 + 50)) err(`${tag} mainRoadM must be a non-negative integer of at most km * 1000 + 50`);
+  if ('profile' in entry) {
+    const pr = entry.profile;
+    if (!Array.isArray(pr) || pr.length < 2 || pr.length > 120 || !pr.every(isPair)) err(`${tag} profile must be 2..120 [km, ele] number pairs`);
+    else {
+      if (pr.some((p, i) => i && p[0] < pr[i - 1][0])) err(`${tag} profile km must not decrease`);
+      if (pr[0][0] !== 0) err(`${tag} profile must start at km 0`);
+      if (Math.abs(pr[pr.length - 1][0] - entry.km) > 0.1) err(`${tag} profile ends at km ${pr[pr.length - 1][0]}, not within 0.1 of km ${entry.km}`);
+    }
+  }
   if (!Array.isArray(entry.stops)) err(`${tag} stops is not an array`);
   lines.push(`${slug}: ${C.totalM} m, ${full.length} points, ${turns.length} turns, ${entry.km} km`);
 }
